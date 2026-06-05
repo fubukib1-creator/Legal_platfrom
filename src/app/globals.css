@@ -1,0 +1,351 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Brand palette anchors. Six named colours drive every surface and accent on
+   the dashboard: deep teal #053B47, mid teal #5E9299, warm gold #E8BB67,
+   peach #FFC1A2, soft peach #FFEAE0, cream #FAF3EE, plus white #FFFFFF for
+   the page background. Tailwind colour ramps below are remapped so existing
+   bg-* / text-* utility usage in components still resolves to palette
+   colours. */
+@theme {
+  /* slate — neutral text tinted toward the deep teal so chrome reads as part
+     of the family rather than cold gray. */
+  --color-slate-50:  #FAF3EE;
+  --color-slate-100: #F1E6DC;
+  --color-slate-200: #E0D2C5;
+  --color-slate-300: #C7B3A4;
+  --color-slate-400: #9C8E84;
+  --color-slate-500: #5E9299;
+  --color-slate-600: #2F5A65;
+  --color-slate-700: #1F4753;
+  --color-slate-800: #103440;
+  --color-slate-900: #053B47;
+  --color-slate-950: #032830;
+
+  /* blue / sky — collapsed onto the teal axis (deep teal at the dark end,
+     mid teal at the mid). Components like the "Reg" bar in the monthly chart
+     pick up bg-blue-500 and now render as palette teal. */
+  --color-blue-50:  #E8F0F2;
+  --color-blue-100: #CFE0E3;
+  --color-blue-200: #A8C5CB;
+  --color-blue-300: #82AAB2;
+  --color-blue-400: #6F9DA5;
+  --color-blue-500: #5E9299;
+  --color-blue-600: #3A6F77;
+  --color-blue-700: #1F4753;
+  --color-blue-800: #103440;
+  --color-blue-900: #053B47;
+
+  --color-sky-50:  #ECF3F4;
+  --color-sky-100: #D6E5E7;
+  --color-sky-200: #B0CDD0;
+  --color-sky-300: #8AB5B9;
+  --color-sky-400: #71A3A8;
+  --color-sky-500: #5E9299;
+  --color-sky-600: #44757C;
+  --color-sky-700: #2A555D;
+
+  /* emerald / green / teal — success/positive uses mid teal. Slightly cooler
+     and lighter than the deep teal so "on-time" badges still read as a
+     distinct hue. */
+  --color-emerald-50:  #ECF3F4;
+  --color-emerald-100: #D6E5E7;
+  --color-emerald-200: #B0CDD0;
+  --color-emerald-300: #8AB5B9;
+  --color-emerald-400: #71A3A8;
+  --color-emerald-500: #5E9299;
+  --color-emerald-600: #44757C;
+  --color-emerald-700: #2A555D;
+  --color-emerald-800: #1B3F46;
+  --color-emerald-900: #053B47;
+
+  --color-green-50:  #ECF3F4;
+  --color-green-100: #D6E5E7;
+  --color-green-200: #B0CDD0;
+  --color-green-300: #8AB5B9;
+  --color-green-400: #71A3A8;
+  --color-green-500: #5E9299;
+  --color-green-600: #44757C;
+  --color-green-700: #2A555D;
+
+  --color-teal-50:  #ECF3F4;
+  --color-teal-100: #D6E5E7;
+  --color-teal-200: #B0CDD0;
+  --color-teal-300: #8AB5B9;
+  --color-teal-400: #71A3A8;
+  --color-teal-500: #5E9299;
+  --color-teal-600: #44757C;
+  --color-teal-700: #2A555D;
+
+  /* amber / yellow — warm gold. Used for "warning" accents and the pending
+     bars in the BU breakdown. */
+  --color-amber-50:  #FCF6E8;
+  --color-amber-100: #F7E9C7;
+  --color-amber-200: #F1D89B;
+  --color-amber-300: #EDCC81;
+  --color-amber-400: #EAC172;
+  --color-amber-500: #E8BB67;
+  --color-amber-600: #C99A3F;
+  --color-amber-700: #9A7423;
+  --color-amber-800: #6E5219;
+
+  --color-yellow-50:  #FCF6E8;
+  --color-yellow-100: #F7E9C7;
+  --color-yellow-200: #F1D89B;
+  --color-yellow-300: #EDCC81;
+  --color-yellow-400: #EAC172;
+  --color-yellow-500: #E8BB67;
+  --color-yellow-600: #C99A3F;
+  --color-yellow-700: #9A7423;
+  --color-yellow-800: #6E5219;
+
+  /* orange — peach. Used for "extended" segments and other warm accents. */
+  --color-orange-50:  #FFF5EE;
+  --color-orange-100: #FFEAE0;
+  --color-orange-200: #FFD6BF;
+  --color-orange-300: #FFC9AE;
+  --color-orange-400: #FFC1A2;
+  --color-orange-500: #FFC1A2;
+  --color-orange-600: #E59370;
+  --color-orange-700: #BC6A45;
+  --color-orange-800: #8A4A2C;
+
+  /* red / rose / pink — destructive is the one place we step outside the
+     palette: errors and "Past deadline" still need to read as red so users
+     don't miss them. Pulled toward the palette's warmth (rust over fire). */
+  --color-red-50:  #FBECE4;
+  --color-red-100: #F4D2C3;
+  --color-red-200: #EAA88A;
+  --color-red-300: #DE7E55;
+  --color-red-400: #C9522A;
+  --color-red-500: #B73B17;
+  --color-red-600: #9D2E0E;
+  --color-red-700: #7C220A;
+  --color-red-800: #561706;
+
+  --color-rose-50:  #FBECE4;
+  --color-rose-100: #F4D2C3;
+  --color-rose-200: #EAA88A;
+  --color-rose-300: #DE7E55;
+  --color-rose-400: #C9522A;
+  --color-rose-500: #B73B17;
+  --color-rose-600: #9D2E0E;
+  --color-rose-700: #7C220A;
+
+  --color-pink-50:  #FFF5EE;
+  --color-pink-100: #FFEAE0;
+  --color-pink-200: #FFD6BF;
+  --color-pink-300: #FFC9AE;
+  --color-pink-400: #FFC1A2;
+  --color-pink-500: #FFC1A2;
+  --color-pink-600: #E59370;
+
+  /* violet / purple — collapsed onto the gold axis so any historical
+     lavender accent now picks up the warm gold. */
+  --color-violet-50:  #FCF6E8;
+  --color-violet-100: #F7E9C7;
+  --color-violet-200: #F1D89B;
+  --color-violet-300: #EDCC81;
+  --color-violet-400: #EAC172;
+  --color-violet-500: #E8BB67;
+  --color-violet-600: #C99A3F;
+  --color-violet-700: #9A7423;
+  --color-violet-800: #6E5219;
+  --color-violet-900: #4D3911;
+
+  --color-purple-50:  #FCF6E8;
+  --color-purple-100: #F7E9C7;
+  --color-purple-200: #F1D89B;
+  --color-purple-300: #EDCC81;
+  --color-purple-400: #EAC172;
+  --color-purple-500: #E8BB67;
+  --color-purple-600: #C99A3F;
+  --color-purple-700: #9A7423;
+}
+
+:root {
+  /* White page with deep-teal text. Cards stay white but lifted by the soft
+     peach border so they read against the body even without a fill. */
+  --background: #FFFFFF;
+  --foreground: #053B47;
+
+  --card: #FFFFFF;
+  --card-foreground: #053B47;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #053B47;
+
+  /* Primary = deep teal #053B47, paired with white text. */
+  --primary: #053B47;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary = soft peach #FFEAE0 (chip / pill background). */
+  --secondary: #FFEAE0;
+  --secondary-foreground: #053B47;
+
+  /* Muted surfaces use cream #FAF3EE; muted text uses mid teal so secondary
+     copy stays in-family but recedes from primary. */
+  --muted: #FAF3EE;
+  --muted-foreground: #5E9299;
+
+  /* Accent = warm gold #E8BB67. */
+  --accent: #E8BB67;
+  --accent-foreground: #053B47;
+
+  /* Destructive: warm rust so errors stay distinct without breaking the
+     palette's warmth. */
+  --destructive: #B73B17;
+
+  --border: #FFEAE0;
+  --input: #FAF3EE;
+  --ring: #5E9299;
+
+  /* Charts cycle through the brand palette. */
+  --chart-1: #053B47;
+  --chart-2: #5E9299;
+  --chart-3: #E8BB67;
+  --chart-4: #FFC1A2;
+  --chart-5: #FFEAE0;
+
+  --radius: 0.625rem;
+
+  --sidebar: #FAF3EE;
+  --sidebar-foreground: #053B47;
+  --sidebar-primary: #053B47;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #FFEAE0;
+  --sidebar-accent-foreground: #053B47;
+  --sidebar-border: #FFEAE0;
+  --sidebar-ring: #5E9299;
+}
+
+.dark {
+  --background: #053B47;
+  --foreground: #FAF3EE;
+  --card: #0A4854;
+  --card-foreground: #FAF3EE;
+  --popover: #0A4854;
+  --popover-foreground: #FAF3EE;
+  --primary: #E8BB67;
+  --primary-foreground: #053B47;
+  --secondary: #1F4753;
+  --secondary-foreground: #FAF3EE;
+  --muted: #103440;
+  --muted-foreground: #B0CDD0;
+  --accent: #FFC1A2;
+  --accent-foreground: #053B47;
+  --destructive: #DE7E55;
+  --border: #1F4753;
+  --input: #1F4753;
+  --ring: #E8BB67;
+  --chart-1: #E8BB67;
+  --chart-2: #FFC1A2;
+  --chart-3: #5E9299;
+  --chart-4: #FFEAE0;
+  --chart-5: #FAF3EE;
+  --sidebar: #0A4854;
+  --sidebar-foreground: #FAF3EE;
+  --sidebar-primary: #E8BB67;
+  --sidebar-primary-foreground: #053B47;
+  --sidebar-accent: #1F4753;
+  --sidebar-accent-foreground: #FAF3EE;
+  --sidebar-border: #1F4753;
+  --sidebar-ring: #E8BB67;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+    /* Reserve scrollbar gutter so navigation between long and short pages
+       doesn't shift content horizontally when the scrollbar appears or
+       disappears. */
+    scrollbar-gutter: stable;
+  }
+}
+
+/* SLA cat animations — see src/components/contract/sla-cat-animation.tsx. */
+@keyframes sla-cat-bob {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50%      { transform: translateY(-6px) rotate(2deg); }
+}
+@keyframes sla-flower-sway {
+  0%, 100% { transform: rotate(-6deg); }
+  50%      { transform: rotate(6deg); }
+}
+@keyframes sla-cat-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20%      { transform: translateX(-2px) rotate(-3deg); }
+  40%      { transform: translateX(2px) rotate(3deg); }
+  60%      { transform: translateX(-2px) rotate(-2deg); }
+  80%      { transform: translateX(2px) rotate(2deg); }
+}
+@keyframes sla-fire-flicker {
+  0%, 100% { transform: scale(1) translateY(0); opacity: 1; }
+  50%      { transform: scale(1.15) translateY(-2px); opacity: 0.85; }
+}
+@keyframes sla-smoke-rise {
+  0%   { transform: translateY(0) scale(0.9); opacity: 0; }
+  20%  { opacity: 0.8; }
+  100% { transform: translateY(-32px) scale(1.3); opacity: 0; }
+}
+@keyframes sla-ember-glow {
+  0%, 100% { box-shadow: 0 0 12px 2px rgba(220, 38, 38, 0.5); }
+  50%      { box-shadow: 0 0 24px 6px rgba(220, 38, 38, 0.8); }
+}
+@keyframes sla-cloud-drift {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(60px); }
+}

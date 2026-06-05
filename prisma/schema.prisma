@@ -1,0 +1,223 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String?
+  role          Role
+  department    String
+  lineUserId    String?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  ownedContracts    Contract[]   @relation("BUOwner")
+  assignedReviews   Review[]     @relation("LegalAssignee")
+  events            Event[]
+}
+
+enum Role {
+  BU_MEMBER
+  BU_MANAGER
+  LEGAL_REVIEWER
+  LEGAL_LEAD
+  ADMIN
+}
+
+model Contract {
+  id              String           @id @default(cuid())
+  contractNumber  String           @unique
+  title           String
+  type            ContractType
+  complexity      ContractComplexity?
+  counterparty    String
+  estimatedValue  Decimal?         @db.Decimal(18, 2)
+  currency        String           @default("THB")
+
+  buOwnerId       String
+  buOwner         User             @relation("BUOwner", fields: [buOwnerId], references: [id])
+  buDepartment    String
+
+  status          ContractStatus
+  currentRound    Int              @default(0)
+
+  startDate       DateTime         @default(now())
+  templateDate    DateTime?
+  finalizedDate   DateTime?
+  signedDate      DateTime?
+
+  // Post-signature lifecycle tracking. Populated when a contract enters
+  // MONITORING — see updateTracking action.
+  paymentSide               PaymentSide?
+  effectiveDate             DateTime?
+  expiryDate                DateTime?
+  renewalDecisionDeadline   DateTime?
+  contractValue             Decimal?  @db.Decimal(18, 2)
+  revenueStamp              Decimal?  @db.Decimal(18, 2)
+  depositAmount             Decimal?  @db.Decimal(18, 2)
+  depositReturnDate         DateTime?
+  monitoringNotes           String?
+
+  notes           String?
+  cancelReason    String?
+
+  versions        Version[]
+  reviews         Review[]
+  events          Event[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([status])
+  @@index([buDepartment])
+  @@index([buOwnerId])
+}
+
+enum ContractType {
+  MOU
+  NDA
+  PROCUREMENT
+  OTHERS
+  INQUIRY
+  POA
+  OFFICIAL_LETTER
+}
+
+enum ContractComplexity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum PaymentSide {
+  PAYER
+  RECEIVER
+}
+
+enum ContractStatus {
+  REGISTERED
+  AWAITING_TEMPLATE
+  DRAFTING
+  IN_LEGAL_REVIEW
+  WITH_COUNTERPARTY
+  CP_RESPONDED
+  AWAITING_SIGNATURE
+  OUT_FOR_SIGNING
+  MONITORING
+  CANCELLED
+}
+
+model Version {
+  id            String       @id @default(cuid())
+  contractId    String
+  contract      Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  versionLabel  String
+  round         Int
+  stage         VersionStage
+  fileName      String
+  storageKey    String
+  fileSize      Int
+  mimeType      String
+  uploadedById  String
+  uploadedAt    DateTime     @default(now())
+
+  @@index([contractId, round])
+}
+
+enum VersionStage {
+  TEMPLATE
+  BU_DRAFT
+  LEGAL_REVIEWED
+  CP_RETURNED
+  FINAL
+  SIGNED
+}
+
+model Review {
+  id                  String     @id @default(cuid())
+  contractId          String
+  contract            Contract   @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  round               Int
+  submittedAt         DateTime
+  pickedUpAt          DateTime?
+  returnedAt          DateTime?
+  assignedToId        String?
+  assignedTo          User?      @relation("LegalAssignee", fields: [assignedToId], references: [id])
+  slaDeadline         DateTime
+  slaStatus           SLAStatus  @default(ON_TRACK)
+  slaExtensionDays    Int        @default(0)
+  legalNotes          String?
+
+  @@index([contractId, round])
+  @@index([slaStatus])
+}
+
+enum SLAStatus {
+  ON_TRACK
+  WARNING
+  BREACHED
+  COMPLETED
+  COMPLETED_LATE
+}
+
+model Event {
+  id          String     @id @default(cuid())
+  contractId  String
+  contract    Contract   @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  actorId     String
+  actor       User       @relation(fields: [actorId], references: [id])
+  eventType   EventType
+  fromStatus  ContractStatus?
+  toStatus    ContractStatus?
+  round       Int?
+  metadata    Json?
+  createdAt   DateTime   @default(now())
+
+  @@index([contractId, createdAt])
+}
+
+enum EventType {
+  CONTRACT_REGISTERED
+  TEMPLATE_ASSIGNED
+  DRAFT_SUBMITTED
+  REVIEW_PICKED_UP
+  REVISE_REQUESTED
+  SENT_TO_COUNTERPARTY
+  CP_REPLIED
+  RESUBMITTED_TO_LEGAL
+  MARKED_AWAITING_SIGNATURE
+  SUBMITTED_FOR_SIGNING
+  SIGNED_UPLOADED
+  TRACKING_UPDATED
+  CANCELLED
+  COMMENT_ADDED
+  SLA_EXTENDED
+  STAGE_UNDONE
+  CONTRACT_EDITED
+}
+
+model Holiday {
+  date        DateTime  @id @db.Date
+  name        String
+  year        Int
+
+  @@index([year])
+}
+
+model NotificationLog {
+  id           String   @id @default(cuid())
+  channel      String
+  recipient    String
+  subject      String?
+  body         String
+  status       String
+  errorMessage String?
+  contractId   String?
+  sentAt       DateTime @default(now())
+}
