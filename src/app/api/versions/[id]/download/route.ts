@@ -33,10 +33,19 @@ export async function GET(
     version.contract,
   );
   if (!allowed) {
-    // 404 not 403 to avoid leaking existence.
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const url = await getStorage().getDownloadUrl(version.storageKey);
-  return NextResponse.redirect(url, 302);
+  const result = await getStorage().download(version.storageKey);
+
+  if (result.type === "redirect") {
+    return NextResponse.redirect(result.url, 302);
+  }
+
+  return new NextResponse(result.body, {
+    headers: {
+      "Content-Type": result.mimeType,
+      "Content-Disposition": `attachment; filename="${encodeURIComponent(version.fileName)}"`,
+    },
+  });
 }

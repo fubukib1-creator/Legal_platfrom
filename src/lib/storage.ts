@@ -1,34 +1,28 @@
 import { put, del } from "@vercel/blob";
-
-// Uploads go to Vercel Blob with `access: 'public'` plus a random suffix.
-// The URL the SDK returns contains an unguessable token, so the bytes can't
-// be enumerated even though the bucket itself is public. We store that URL
-// in DB (Version.storageKey) and the authenticated download route 302s to it.
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 
 export type UploadResult = {
-  // The URL returned by Vercel Blob. Save this as Version.storageKey so we
-  // can hand it back to clients (via the auth-gated download route) and to
-  // `del()` when the version is removed.
   storageKey: string;
   url: string;
 };
 
+export type DownloadResult =
+  | { type: "redirect"; url: string }
+  | { type: "stream"; body: ReadableStream; mimeType: string };
+
 export interface StorageService {
-  upload(
-    pathname: string,
-    body: Buffer,
-    mimeType: string,
-  ): Promise<UploadResult>;
-  getDownloadUrl(storageKey: string): Promise<string>;
+  upload(pathname: string, body: Buffer, mimeType: string): Promise<UploadResult>;
+  download(storageKey: string): Promise<DownloadResult>;
   delete(storageKey: string): Promise<void>;
 }
 
 class VercelBlobStorageService implements StorageService {
-  async upload(
-    pathname: string,
-    body: Buffer,
-    mimeType: string,
-  ): Promise<UploadResult> {
+  async upload(pathname: string, body: Buffer, mimeType: string): Promise<UploadResult> {
     const result = await put(pathname, body, {
       access: "public",
       addRandomSuffix: true,
@@ -37,8 +31,8 @@ class VercelBlobStorageService implements StorageService {
     return { storageKey: result.url, url: result.url };
   }
 
-  async getDownloadUrl(storageKey: string): Promise<string> {
-    return storageKey;
+  async download(storageKey: string): Promise<DownloadResult> {
+    return { type: "redirect", url: storageKey };
   }
 
   async delete(storageKey: string): Promise<void> {
@@ -46,11 +40,60 @@ class VercelBlobStorageService implements StorageService {
   }
 }
 
+class S3StorageService implements StorageService {
+  private client: S3Client;
+  private bucket: string;
+
+  constructor() {
+    this.client = new S3Client({
+      endpoint: process.env.S3_ENDPOINT!,
+      region: process.env.S3_REGION ?? "us-east-1",
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY!,
+        secretAccessKey: process.env.S3_SECRET_KEY!,
+      },
+      forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
+    });
+    this.bucket = process.env.S3_BUCKET ?? "contracts";
+  }
+
+  async upload(pathname: string, body: Buffer, mimeType: string): Promise<UploadResult> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: pathname,
+        Body: body,
+        ContentType: mimeType,
+      }),
+    );
+    return { storageKey: pathname, url: pathname };
+  }
+
+  async download(storageKey: string): Promise<DownloadResult> {
+    const result = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: storageKey }),
+    );
+    return {
+      type: "stream",
+      body: result.Body!.transformToWebStream(),
+      mimeType: result.ContentType ?? "application/octet-stream",
+    };
+  }
+
+  async delete(storageKey: string): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: storageKey }),
+    );
+  }
+}
+
 let cached: StorageService | undefined;
 
 export function getStorage(): StorageService {
   if (!cached) {
-    cached = new VercelBlobStorageService();
+    cached = process.env.BLOB_READ_WRITE_TOKEN
+      ? new VercelBlobStorageService()
+      : new S3StorageService();
   }
   return cached;
 }
