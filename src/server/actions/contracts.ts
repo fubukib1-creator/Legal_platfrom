@@ -221,7 +221,7 @@ export async function registerContract(
         department: data.buDepartment,
         role: { in: ["BU_MEMBER", "BU_MANAGER"] },
       },
-      orderBy: [{ role: "asc" }, { createdAt: "asc" }],
+      orderBy: [{ role: "desc" }, { createdAt: "asc" }],
       select: { id: true },
     });
     if (!owner) {
@@ -1119,7 +1119,7 @@ export async function editContract(
           department: data.buDepartment,
           role: { in: ["BU_MEMBER", "BU_MANAGER"] },
         },
-        orderBy: [{ role: "asc" }, { createdAt: "asc" }],
+        orderBy: [{ role: "desc" }, { createdAt: "asc" }],
         select: { id: true },
       });
       if (!newOwner) {
