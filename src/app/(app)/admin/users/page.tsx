@@ -5,13 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { UserCreateForm, UserActiveToggle, UserEditButton, BUUserContractsButton } from "./user-controls";
+import { UserCreateForm, UserTableRow } from "./user-controls";
 
 export default async function AdminUsersPage() {
   const session = await auth();
@@ -72,54 +70,12 @@ export default async function AdminUsersPage() {
           </TableHeader>
           <TableBody>
             {users.map((u) => (
-              <TableRow key={u.id}>
-                <TableCell className="font-medium">{u.name}</TableCell>
-                <TableCell className="text-sm text-slate-600">{u.email}</TableCell>
-                <TableCell className="font-mono text-xs">{u.role}</TableCell>
-                <TableCell>{u.department}</TableCell>
-                <TableCell>
-                  {u.active ? (
-                    <Badge variant="secondary" className="border-0 bg-green-100 text-green-900">
-                      Active
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="border-0 bg-slate-200 text-slate-700">
-                      Inactive
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="text-sm">
-                  {u.role === "BU_MEMBER" || u.role === "BU_MANAGER" ? (
-                    <BUUserContractsButton
-                      userId={u.id}
-                      userName={u.name}
-                      department={u.department}
-                      contractCount={contractCountByUser.get(u.id) ?? 0}
-                    />
-                  ) : (
-                    "—"
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <UserEditButton
-                      user={{
-                        id: u.id,
-                        name: u.name,
-                        email: u.email,
-                        role: u.role,
-                        department: u.department,
-                      }}
-                      isSelf={u.id === session.user.id}
-                    />
-                    <UserActiveToggle
-                      userId={u.id}
-                      active={u.active}
-                      isSelf={u.id === session.user.id}
-                    />
-                  </div>
-                </TableCell>
-              </TableRow>
+              <UserTableRow
+                key={u.id}
+                user={u}
+                contractCount={contractCountByUser.get(u.id) ?? 0}
+                isSelf={u.id === session.user.id}
+              />
             ))}
           </TableBody>
         </Table>

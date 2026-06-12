@@ -47,13 +47,11 @@ export function NewContractForm({ teams, buUsersByTeam }: Props) {
   const [complexity, setComplexity] = useState<Complexity | "">("");
   const [team, setTeam] = useState<string>(teams[0]?.department ?? "");
   const [startDate, setStartDate] = useState<string>(todayIsoDate());
-  const [buOwnerId, setBuOwnerId] = useState<string>(
-    buUsersByTeam[teams[0]?.department ?? ""]?.[0]?.id ?? "",
-  );
+  const [buOwnerId, setBuOwnerId] = useState<string>("");
 
   function handleTeamChange(v: string) {
     setTeam(v);
-    setBuOwnerId(buUsersByTeam[v]?.[0]?.id ?? "");
+    setBuOwnerId("");
   }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {

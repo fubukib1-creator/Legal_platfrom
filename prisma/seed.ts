@@ -149,16 +149,15 @@ const demo: DemoContract[] = [
     round: 0,
   },
 
-  // ── DRAFTING ──────────────────────────────────────────────────────────────
+  // ── REGISTERED (awaiting legal pickup) ───────────────────────────────────
   {
     title: "PEA grid interconnect MOU",
     type: "MOU",
     complexity: "MEDIUM",
     counterparty: "PEA Region 3",
     ownerEmail: CE_OWNER,
-    status: "DRAFTING",
+    status: "REGISTERED",
     daysAgoStarted: 5,
-    daysAgoTemplate: 3,
     round: 0,
   },
   {
@@ -167,9 +166,8 @@ const demo: DemoContract[] = [
     complexity: "LOW",
     counterparty: "Krungsri Auto",
     ownerEmail: FP_OWNER,
-    status: "DRAFTING",
+    status: "REGISTERED",
     daysAgoStarted: 4,
-    daysAgoTemplate: 2,
     round: 0,
   },
   {
@@ -178,9 +176,8 @@ const demo: DemoContract[] = [
     // Intentionally unset complexity to exercise the "Unset" bucket
     counterparty: "Ministry of Energy",
     ownerEmail: CE_OWNER,
-    status: "DRAFTING",
+    status: "REGISTERED",
     daysAgoStarted: 3,
-    daysAgoTemplate: 2,
     round: 0,
   },
 
@@ -565,25 +562,13 @@ function buildEventTrail(
     round: 0,
   });
 
-  // TEMPLATE_ASSIGNED — fired for any stage past REGISTERED.
-  if (c.daysAgoTemplate != null) {
-    events.push({
-      eventType: "TEMPLATE_ASSIGNED",
-      at: daysAgo(c.daysAgoTemplate),
-      actorEmail: legalEmail,
-      fromStatus: "REGISTERED",
-      toStatus: "DRAFTING",
-      round: 0,
-    });
-  }
-
-  // DRAFT_SUBMITTED — fired for any stage past DRAFTING that has a review.
+  // SUBMITTED_FOR_REVIEW — fired for any stage that has a review.
   if (c.daysAgoSubmitted != null) {
     events.push({
-      eventType: "DRAFT_SUBMITTED",
+      eventType: "SUBMITTED_FOR_REVIEW",
       at: daysAgo(c.daysAgoSubmitted),
       actorEmail: legalEmail,
-      fromStatus: "DRAFTING",
+      fromStatus: "REGISTERED",
       toStatus: "IN_LEGAL_REVIEW",
       round: c.round ?? 1,
     });

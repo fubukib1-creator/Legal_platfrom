@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Role } from "@prisma/client";
+import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { TableRow, TableCell } from "@/components/ui/table";
 import {
   createUser,
   setUserActive,
@@ -507,6 +509,270 @@ export function BUUserContractsButton({
           )}
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BU contract panel — inline expandable (replaces dialog)
+// ─────────────────────────────────────────────────────────────────────────────
+
+type PanelView = "list" | "pick" | "confirm";
+
+function BUContractPanel({
+  userId,
+  userName,
+  department,
+}: {
+  userId: string;
+  userName: string;
+  department: string;
+}) {
+  const router = useRouter();
+  const [view, setView] = useState<PanelView>("list");
+  const [allContracts, setAllContracts] = useState<ContractForReassign[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [confirmContract, setConfirmContract] = useState<ContractForReassign | null>(null);
+  const [reassigning, startReassign] = useTransition();
+
+  useEffect(() => { void fetchContracts(); }, []);
+
+  async function fetchContracts() {
+    setLoading(true);
+    const result = await getContractsForDepartment(department);
+    if (result.success) setAllContracts(result.data);
+    else toast.error(result.error);
+    setLoading(false);
+  }
+
+  function handlePickContract(contract: ContractForReassign) {
+    if (contract.currentOwner?.id === userId) return;
+    if (contract.currentOwner) {
+      setConfirmContract(contract);
+      setView("confirm");
+    } else {
+      doReassign(contract.id);
+    }
+  }
+
+  function doReassign(contractId: string) {
+    startReassign(async () => {
+      const r = await reassignContractOwner({ contractId, newOwnerId: userId });
+      if (r.success) {
+        toast.success("Contract reassigned");
+        const result = await getContractsForDepartment(department);
+        if (result.success) setAllContracts(result.data);
+        setView("list");
+        setConfirmContract(null);
+        router.refresh();
+      } else {
+        toast.error(r.error);
+      }
+    });
+  }
+
+  const ownedContracts = allContracts?.filter((c) => c.currentOwner?.id === userId) ?? [];
+  const deptContracts = allContracts ?? [];
+
+  return (
+    <div className="px-10 py-4 space-y-3 bg-slate-50 border-t">
+      {view === "list" && (
+        <>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+            {department} · {ownedContracts.length} contract{ownedContracts.length !== 1 ? "s" : ""} owned
+          </p>
+          {loading ? (
+            <p className="text-sm text-slate-400">Loading…</p>
+          ) : ownedContracts.length === 0 ? (
+            <p className="text-sm text-slate-400">No contracts assigned yet.</p>
+          ) : (
+            <ul className="divide-y rounded-md border bg-white text-sm">
+              {ownedContracts.map((c) => (
+                <li key={c.id} className="flex items-center justify-between px-3 py-2">
+                  <div>
+                    <span className="font-mono text-xs text-slate-400">{c.contractNumber}</span>
+                    <p className="font-medium leading-snug">{c.title}</p>
+                  </div>
+                  <Badge variant="secondary" className="ml-3 shrink-0 text-xs">
+                    {STATUS_LABEL[c.status] ?? c.status}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button size="sm" variant="outline" onClick={() => setView("pick")}>
+            + Add contract
+          </Button>
+        </>
+      )}
+
+      {view === "pick" && (
+        <>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+            Select contract from {department} to assign to {userName}
+          </p>
+          {loading ? (
+            <p className="text-sm text-slate-400">Loading…</p>
+          ) : deptContracts.length === 0 ? (
+            <p className="text-sm text-slate-400">No contracts in {department}.</p>
+          ) : (
+            <ul className="divide-y rounded-md border bg-white text-sm max-h-56 overflow-y-auto">
+              {deptContracts.map((c) => {
+                const isOwned = c.currentOwner?.id === userId;
+                return (
+                  <li
+                    key={c.id}
+                    className={`flex items-center justify-between px-3 py-2 ${
+                      isOwned ? "opacity-40 cursor-default" : "cursor-pointer hover:bg-slate-50"
+                    }`}
+                    onClick={() => !isOwned && handlePickContract(c)}
+                  >
+                    <div>
+                      <span className="font-mono text-xs text-slate-400">{c.contractNumber}</span>
+                      <p className="font-medium leading-snug">{c.title}</p>
+                      {c.currentOwner && !isOwned && (
+                        <p className="text-xs text-slate-400">Owned by {c.currentOwner.name}</p>
+                      )}
+                      {isOwned && (
+                        <p className="text-xs text-slate-400">Already assigned to {userName}</p>
+                      )}
+                    </div>
+                    <Badge variant="secondary" className="ml-3 shrink-0 text-xs">
+                      {STATUS_LABEL[c.status] ?? c.status}
+                    </Badge>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <Button size="sm" variant="outline" onClick={() => setView("list")}>
+            ← Back
+          </Button>
+        </>
+      )}
+
+      {view === "confirm" && confirmContract && (
+        <div className="space-y-3">
+          <p className="text-sm">
+            <span className="font-semibold">{confirmContract.contractNumber}</span>{" "}
+            &quot;{confirmContract.title}&quot; is currently owned by{" "}
+            <span className="font-semibold">{confirmContract.currentOwner?.name}</span>.
+          </p>
+          <p className="text-sm text-slate-500">
+            Reassign to <span className="font-semibold">{userName}</span>?
+          </p>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setView("pick"); setConfirmContract(null); }}
+              disabled={reassigning}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => doReassign(confirmContract.id)}
+              disabled={reassigning}
+            >
+              {reassigning ? "Reassigning…" : "Confirm"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UserTableRow — full row with inline contract expand on name click
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function UserTableRow({
+  user,
+  contractCount,
+  isSelf,
+}: {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: Role;
+    department: string;
+    active: boolean;
+  };
+  contractCount: number;
+  isSelf: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isBU = user.role === "BU_MEMBER" || user.role === "BU_MANAGER";
+
+  return (
+    <>
+      <TableRow className={expanded ? "bg-slate-50/60" : undefined}>
+        <TableCell className="font-medium">
+          {isBU ? (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              className="flex items-center gap-1.5 text-left cursor-pointer hover:underline underline-offset-2"
+            >
+              <ChevronRight
+                size={13}
+                className={`flex-shrink-0 text-slate-400 transition-transform duration-150 ${
+                  expanded ? "rotate-90" : ""
+                }`}
+              />
+              {user.name}
+            </button>
+          ) : (
+            user.name
+          )}
+        </TableCell>
+        <TableCell className="text-sm text-slate-600">{user.email}</TableCell>
+        <TableCell className="font-mono text-xs">{user.role}</TableCell>
+        <TableCell>{user.department}</TableCell>
+        <TableCell>
+          {user.active ? (
+            <Badge variant="secondary" className="border-0 bg-green-100 text-green-900">
+              Active
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="border-0 bg-slate-200 text-slate-700">
+              Inactive
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell className="text-sm text-slate-500">
+          {isBU ? contractCount : "—"}
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex justify-end gap-2">
+            <UserEditButton
+              user={{
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                department: user.department,
+              }}
+              isSelf={isSelf}
+            />
+            <UserActiveToggle userId={user.id} active={user.active} isSelf={isSelf} />
+          </div>
+        </TableCell>
+      </TableRow>
+      {expanded && isBU && (
+        <TableRow>
+          <TableCell colSpan={7} className="p-0">
+            <BUContractPanel
+              userId={user.id}
+              userName={user.name}
+              department={user.department}
+            />
+          </TableCell>
+        </TableRow>
+      )}
     </>
   );
 }
