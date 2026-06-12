@@ -58,7 +58,7 @@ export const TRANSITION_RULES: Readonly<Record<TransitionAction, Rule>> = {
     allowedRoles: LEGAL_ROLES,
   },
   markAwaitingSignature: {
-    from: ["IN_LEGAL_REVIEW"],
+    from: ["IN_LEGAL_REVIEW", "PENDING_BU_REVISION"],
     to: "AWAITING_SIGNATURE",
     allowedRoles: LEGAL_ROLES,
   },

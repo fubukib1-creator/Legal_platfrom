@@ -35,7 +35,7 @@ const ACTION_DEFS: ReadonlyArray<ActionDef> = [
 const ACTIONS_BY_STATUS: Partial<Record<ContractStatus, ReadonlyArray<TransitionAction>>> = {
   REGISTERED: ["startReview"],
   IN_LEGAL_REVIEW: ["revise", "markAwaitingSignature"],
-  PENDING_BU_REVISION: ["resubmitForReview"],
+  PENDING_BU_REVISION: ["resubmitForReview", "markAwaitingSignature"],
   AWAITING_SIGNATURE: ["submitForSigning"],
 };
 
