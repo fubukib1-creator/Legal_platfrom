@@ -179,7 +179,8 @@ const registerSchema = z.object({
   type: z.enum([
     "MOU",
     "NDA",
-    "PROCUREMENT",
+    "SALE_PURCHASE",
+    "SERVICE_HIRE_OF_WORK",
     "OTHERS",
     "INQUIRY",
     "POA",
@@ -1065,7 +1066,8 @@ const editContractSchema = z.object({
     .enum([
       "MOU",
       "NDA",
-      "PROCUREMENT",
+      "SALE_PURCHASE",
+      "SERVICE_HIRE_OF_WORK",
       "OTHERS",
       "INQUIRY",
       "POA",

@@ -198,7 +198,7 @@ const demo: DemoContract[] = [
   },
   {
     title: "PTT — diesel byproduct procurement H2 2026",
-    type: "PROCUREMENT",
+    type: "SALE_PURCHASE",
     complexity: "HIGH",
     counterparty: "PTT Group",
     ownerEmail: VB_OWNER,
@@ -212,7 +212,7 @@ const demo: DemoContract[] = [
   },
   {
     title: "AquaSol — Hua Hin floating solar procurement",
-    type: "PROCUREMENT",
+    type: "SALE_PURCHASE",
     complexity: "HIGH",
     counterparty: "AquaSol Asia",
     ownerEmail: VB_OWNER,
@@ -229,7 +229,7 @@ const demo: DemoContract[] = [
   // share for the current period.
   {
     title: "EGAT — peaking plant supply (extended SLA)",
-    type: "PROCUREMENT",
+    type: "SALE_PURCHASE",
     complexity: "HIGH",
     counterparty: "EGAT",
     ownerEmail: SP_OWNER,
@@ -276,7 +276,7 @@ const demo: DemoContract[] = [
   },
   {
     title: "Trina Solar — Tier-1 panels procurement",
-    type: "PROCUREMENT",
+    type: "SALE_PURCHASE",
     complexity: "MEDIUM",
     counterparty: "Trina Solar",
     ownerEmail: VB_OWNER,
@@ -308,7 +308,7 @@ const demo: DemoContract[] = [
   // ── AWAITING_SIGNATURE (additional) ───────────────────────────────────────
   {
     title: "GULF — Khon Kaen 8MW solar procurement",
-    type: "PROCUREMENT",
+    type: "SALE_PURCHASE",
     complexity: "HIGH",
     counterparty: "GULF Energy",
     ownerEmail: VB_OWNER,
@@ -356,7 +356,7 @@ const demo: DemoContract[] = [
   },
   {
     title: "CATL — battery cells 50MWh procurement",
-    type: "PROCUREMENT",
+    type: "SALE_PURCHASE",
     complexity: "HIGH",
     counterparty: "CATL",
     ownerEmail: VB_OWNER,
@@ -422,7 +422,7 @@ const demo: DemoContract[] = [
   // ── CANCELLED ─────────────────────────────────────────────────────────────
   {
     title: "MaeSotPower — mini-grid procurement (cancelled)",
-    type: "PROCUREMENT",
+    type: "SALE_PURCHASE",
     complexity: "MEDIUM",
     counterparty: "MaeSotPower Co.",
     ownerEmail: VB_OWNER,
@@ -439,7 +439,7 @@ const demo: DemoContract[] = [
   // ── Pending-by-BU diversity ───────────────────────────────────────────────
   {
     title: "SP / SCG — strategic materials procurement",
-    type: "PROCUREMENT",
+    type: "SALE_PURCHASE",
     complexity: "MEDIUM",
     counterparty: "Siam Cement Group",
     ownerEmail: SP_OWNER,
@@ -465,14 +465,14 @@ function buildHistoricalSignedContracts(): DemoContract[] {
   const types: ContractType[] = [
     "MOU",
     "NDA",
-    "PROCUREMENT",
+    "SALE_PURCHASE",
     "OTHERS",
     "INQUIRY",
     "POA",
     "OFFICIAL_LETTER",
     "MOU",
     "NDA",
-    "PROCUREMENT",
+    "SALE_PURCHASE",
     "OTHERS",
     "INQUIRY",
   ];

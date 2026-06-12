@@ -82,11 +82,12 @@ model Contract {
 enum ContractType {
   MOU
   NDA
-  PROCUREMENT
   OTHERS
   INQUIRY
   POA
   OFFICIAL_LETTER
+  SALE_PURCHASE
+  SERVICE_HIRE_OF_WORK
 }
 
 enum ContractComplexity {

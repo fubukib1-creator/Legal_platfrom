@@ -4,11 +4,12 @@ import type { ContractType } from "@prisma/client";
 // in this exact sequence. `code` is the 2-letter token embedded in the
 // contract number.
 //
-// The first four types (MOU/NDA/PROCUREMENT/OTHERS) share a single global
-// per-year running counter. The latter three (INQUIRY/POA/OFFICIAL_LETTER)
-// each maintain their own per-type per-year sequence — `separateSequence`
-// flags them so the registration action knows to filter by type code when
-// computing the next sequence.
+// MOU/NDA/SALE_PURCHASE/SERVICE_HIRE_OF_WORK/OTHERS share a single global
+// per-year running counter. INQUIRY/POA/OFFICIAL_LETTER each maintain their
+// own per-type per-year sequence — `separateSequence` flags them so the
+// registration action knows to filter by type code when computing the next
+// sequence. PROCUREMENT is retired from new registrations but kept in the
+// schema for backward compatibility with existing contracts.
 export const CONTRACT_TYPES: ReadonlyArray<{
   id: ContractType;
   label: string;
@@ -17,7 +18,8 @@ export const CONTRACT_TYPES: ReadonlyArray<{
 }> = [
   { id: "MOU", label: "MOU", code: "AM" },
   { id: "NDA", label: "NDA", code: "AN" },
-  { id: "PROCUREMENT", label: "Procurement", code: "AP" },
+  { id: "SALE_PURCHASE", label: "Sale & Purchase", code: "AS" },
+  { id: "SERVICE_HIRE_OF_WORK", label: "Service/Hire of work", code: "AH" },
   { id: "OTHERS", label: "Others", code: "AO" },
   { id: "INQUIRY", label: "ข้อสอบถาม", code: "IN", separateSequence: true },
   { id: "POA", label: "POA", code: "PO", separateSequence: true },
