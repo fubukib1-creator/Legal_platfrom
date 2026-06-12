@@ -20,8 +20,8 @@ const STATUS_LABEL: Record<ContractStatus, string> = {
   IN_LEGAL_REVIEW: "In legal review",
   WITH_COUNTERPARTY: "With counterparty",
   CP_RESPONDED: "CP responded",
-  AWAITING_SIGNATURE: "Awaiting signature",
-  OUT_FOR_SIGNING: "Signed and Uploaded",
+  AWAITING_SIGNATURE: "Signed",
+  OUT_FOR_SIGNING: "Uploaded",
   MONITORING: "Monitoring",
   CANCELLED: "Cancelled",
 };

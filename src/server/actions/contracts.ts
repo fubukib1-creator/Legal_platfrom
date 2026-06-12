@@ -14,6 +14,7 @@ import {
   PermissionDeniedError,
   assertPermission,
   canViewContract,
+  hasPermission,
   type Permission,
   type SessionUser,
 } from "@/lib/permissions";
@@ -482,19 +483,34 @@ async function fileTransition(opts: {
       }
 
       if (opts.action === "markAwaitingSignature") {
-        const review = await tx.review.findFirst({
+        const openReview = await tx.review.findFirst({
           where: { contractId: contract.id, round, returnedAt: null },
           orderBy: { submittedAt: "desc" },
         });
-        if (review) {
+        if (openReview) {
+          // Normal path: came from IN_LEGAL_REVIEW — close the open review.
           await tx.review.update({
-            where: { id: review.id },
+            where: { id: openReview.id },
             data: {
               returnedAt: stageDate,
               legalNotes: notes,
-              slaStatus: stageDate <= review.slaDeadline ? "COMPLETED" : "COMPLETED_LATE",
+              slaStatus: stageDate <= openReview.slaDeadline ? "COMPLETED" : "COMPLETED_LATE",
             },
           });
+        } else if (notes) {
+          // Came from PENDING_BU_REVISION — no open review exists (it was already
+          // closed by reviseDraft). Attach notes to the most recently closed review
+          // so they appear in the review history rather than disappearing into the event log.
+          const lastClosed = await tx.review.findFirst({
+            where: { contractId: contract.id, returnedAt: { not: null } },
+            orderBy: { returnedAt: "desc" },
+          });
+          if (lastClosed) {
+            await tx.review.update({
+              where: { id: lastClosed.id },
+              data: { legalNotes: notes },
+            });
+          }
         }
       }
 
@@ -598,11 +614,7 @@ export async function autoPickupOnView(
 ): Promise<ActionResult<{ pickedUp: boolean }>> {
   try {
     const user = await requireUser();
-    if (
-      user.role !== "LEGAL_REVIEWER" &&
-      user.role !== "LEGAL_LEAD" &&
-      user.role !== "ADMIN"
-    ) {
+    if (!hasPermission(user.role, "contract:pickupReview")) {
       return ok({ pickedUp: false });
     }
 
@@ -1277,7 +1289,13 @@ export async function undoLastStage(
     }
 
     const previousStatus = lastTransition.fromStatus;
-    const previousRound = lastTransition.round ?? contract.currentRound;
+    // REVISE_REQUESTED records the post-increment round in the event. The true
+    // previous round is stored in metadata.previousRound — fall back to round-1.
+    const previousRound =
+      lastTransition.eventType === "REVISE_REQUESTED"
+        ? (((lastTransition.metadata as Record<string, unknown>)?.previousRound as number) ??
+            (lastTransition.round ?? 1) - 1)
+        : (lastTransition.round ?? contract.currentRound);
 
     await prisma.$transaction(async (tx) => {
       // Roll back side-effects of the reverted event. Best-effort — we wipe
@@ -1307,6 +1325,24 @@ export async function undoLastStage(
         where: { id: contract.id },
         data: sideEffectUpdate,
       });
+
+      // Re-open the review that reviseDraft closed and restore the pre-revise round.
+      if (lastTransition.eventType === "REVISE_REQUESTED") {
+        const review = await tx.review.findFirst({
+          where: {
+            contractId: contract.id,
+            round: previousRound,
+            returnedAt: { not: null },
+          },
+          orderBy: { returnedAt: "desc" },
+        });
+        if (review) {
+          await tx.review.update({
+            where: { id: review.id },
+            data: { returnedAt: null, legalNotes: null, slaStatus: "ON_TRACK" },
+          });
+        }
+      }
 
       // Re-open the review that markAwaitingSignature closed.
       if (lastTransition.eventType === "MARKED_AWAITING_SIGNATURE") {

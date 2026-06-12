@@ -4,15 +4,15 @@ import { cn } from "@/lib/utils";
 type Step = { status: ContractStatus; label: string; short: string };
 
 // The visible lifecycle. Five stages — OUT_FOR_SIGNING is the terminal
-// "Signed and Uploaded" stage. AWAITING_TEMPLATE / MONITORING / the legacy
+// "Uploaded" stage. AWAITING_TEMPLATE / MONITORING / the legacy
 // CP stages (WITH_COUNTERPARTY, CP_RESPONDED) are reserved in the DB enum
 // but not part of the tracked flow.
 const STEPS: ReadonlyArray<Step> = [
   { status: "REGISTERED",          label: "Registered",            short: "Reg"    },
   { status: "IN_LEGAL_REVIEW",     label: "Legal review",          short: "Review" },
   { status: "PENDING_BU_REVISION", label: "Send back to BU owner", short: "Revise" },
-  { status: "AWAITING_SIGNATURE",  label: "Awaiting signature",    short: "Sign"   },
-  { status: "OUT_FOR_SIGNING",     label: "Signed and Uploaded",   short: "Signed" },
+  { status: "AWAITING_SIGNATURE",  label: "Signed",    short: "Signed" },
+  { status: "OUT_FOR_SIGNING",     label: "Uploaded",  short: "Upload" },
 ];
 
 type Props = {

@@ -9,8 +9,8 @@ const STYLE: Record<ContractStatus, { label: string; className: string }> = {
   IN_LEGAL_REVIEW: { label: "In legal review", className: "bg-amber-100 text-amber-900" },
   WITH_COUNTERPARTY: { label: "With counterparty (legacy)", className: "bg-slate-200 text-slate-900" },
   CP_RESPONDED: { label: "CP responded (legacy)", className: "bg-slate-200 text-slate-900" },
-  AWAITING_SIGNATURE: { label: "Awaiting signature", className: "bg-orange-100 text-orange-900" },
-  OUT_FOR_SIGNING: { label: "Signed and Uploaded", className: "bg-green-200 text-green-950" },
+  AWAITING_SIGNATURE: { label: "Signed", className: "bg-orange-100 text-orange-900" },
+  OUT_FOR_SIGNING: { label: "Uploaded", className: "bg-green-200 text-green-950" },
   MONITORING: { label: "Signed (legacy)", className: "bg-green-100 text-green-900" },
   CANCELLED: { label: "Cancelled", className: "bg-red-100 text-red-900" },
 };

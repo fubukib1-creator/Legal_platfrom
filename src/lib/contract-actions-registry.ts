@@ -27,8 +27,8 @@ const ACTION_DEFS: ReadonlyArray<ActionDef> = [
   { action: "startReview", permission: "contract:startReview", label: "Start review", notesField: "submitNotes" },
   { action: "revise", permission: "contract:revise", label: "Send back to BU owner", notesField: "legalNotes" },
   { action: "resubmitForReview", permission: "contract:resubmitForReview", label: "Resubmit for review", notesField: "submitNotes" },
-  { action: "markAwaitingSignature", permission: "contract:markAwaitingSignature", label: "Mark awaiting signature", notesField: "legalNotes" },
-  { action: "submitForSigning", permission: "contract:submitForSigning", label: "Mark signed and uploaded" },
+  { action: "markAwaitingSignature", permission: "contract:markAwaitingSignature", label: "Mark as signed", notesField: "legalNotes" },
+  { action: "submitForSigning", permission: "contract:submitForSigning", label: "Mark as uploaded" },
   { action: "cancelContract", permission: "contract:cancel", label: "Cancel contract" },
 ];
 

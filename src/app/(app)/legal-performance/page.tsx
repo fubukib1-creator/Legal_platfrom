@@ -117,7 +117,7 @@ export default async function LegalKPIPage({
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <KPITile
-          label="Awaiting signature"
+          label="Signed"
           value={data.cohort.awaitingSignature}
         />
         <KPITile
@@ -289,7 +289,7 @@ export default async function LegalKPIPage({
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              Pending signed and uploaded contract by BU
+              Pending uploaded contract by BU
             </CardTitle>
           </CardHeader>
           <CardContent>

@@ -306,7 +306,7 @@ const STATUS_LABEL: Record<string, string> = {
   IN_LEGAL_REVIEW: "Legal review",
   WITH_COUNTERPARTY: "With counterparty",
   CP_RESPONDED: "CP responded",
-  AWAITING_SIGNATURE: "Awaiting signature",
+  AWAITING_SIGNATURE: "Signed",
   OUT_FOR_SIGNING: "Out for signing",
   MONITORING: "Monitoring",
   CANCELLED: "Cancelled",
