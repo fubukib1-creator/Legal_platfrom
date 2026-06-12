@@ -11,24 +11,35 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { UserCreateForm, UserActiveToggle, UserEditButton } from "./user-controls";
+import { UserCreateForm, UserActiveToggle, UserEditButton, BUUserContractsButton } from "./user-controls";
 
 export default async function AdminUsersPage() {
   const session = await auth();
   if (session?.user.role !== "ADMIN") redirect("/contracts");
 
-  const users = await prisma.user.findMany({
-    orderBy: [{ active: "desc" }, { name: "asc" }],
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      department: true,
-      active: true,
-      createdAt: true,
-    },
-  });
+  const [users, contractCounts] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: [{ active: "desc" }, { name: "asc" }],
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        department: true,
+        active: true,
+        createdAt: true,
+      },
+    }),
+    prisma.contract.groupBy({
+      by: ["buOwnerId"],
+      where: { status: { not: "CANCELLED" } },
+      _count: { id: true },
+    }),
+  ]);
+
+  const contractCountByUser = new Map(
+    contractCounts.map((r) => [r.buOwnerId, r._count.id]),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,6 +66,7 @@ export default async function AdminUsersPage() {
               <TableHead>Role</TableHead>
               <TableHead>Department</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Contracts</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -74,6 +86,18 @@ export default async function AdminUsersPage() {
                     <Badge variant="secondary" className="border-0 bg-slate-200 text-slate-700">
                       Inactive
                     </Badge>
+                  )}
+                </TableCell>
+                <TableCell className="text-sm">
+                  {u.role === "BU_MEMBER" || u.role === "BU_MANAGER" ? (
+                    <BUUserContractsButton
+                      userId={u.id}
+                      userName={u.name}
+                      department={u.department}
+                      contractCount={contractCountByUser.get(u.id) ?? 0}
+                    />
+                  ) : (
+                    "—"
                   )}
                 </TableCell>
                 <TableCell className="text-right">

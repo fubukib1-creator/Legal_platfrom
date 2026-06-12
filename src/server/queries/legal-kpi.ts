@@ -101,7 +101,7 @@ function median(values: number[]): number | null {
 const NOT_DONE_STATUSES: ContractStatus[] = [
   "REGISTERED",
   "AWAITING_TEMPLATE",
-  "DRAFTING",
+  "PENDING_BU_REVISION",
   "IN_LEGAL_REVIEW",
   "WITH_COUNTERPARTY",
   "CP_RESPONDED",

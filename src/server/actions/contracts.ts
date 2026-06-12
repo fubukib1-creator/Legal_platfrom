@@ -118,10 +118,10 @@ function transitionGuard(
 function permissionFor(action: TransitionAction): Permission {
   const map: Record<TransitionAction, Permission> = {
     registerContract: "contract:create",
-    assignTemplate: "contract:assignTemplate",
-    submitForReview: "contract:submitForReview",
+    startReview: "contract:startReview",
     pickupReview: "contract:pickupReview",
     revise: "contract:revise",
+    resubmitForReview: "contract:resubmitForReview",
     markAwaitingSignature: "contract:markAwaitingSignature",
     submitForSigning: "contract:submitForSigning",
     updateTracking: "contract:updateTracking",
@@ -191,6 +191,7 @@ const registerSchema = z.object({
   estimatedValue: z.number().nonnegative().optional().nullable(),
   currency: z.string().trim().length(3).default("THB").optional(),
   buDepartment: z.string().trim().min(1, "Select a BU team").max(64),
+  buOwnerId: z.string().trim().optional().nullable(),
   startDate: optionalIsoDate,
   notes: z.string().trim().max(2000).optional().nullable(),
 });
@@ -211,19 +212,33 @@ export async function registerContract(
     const guard = transitionGuard("registerContract", user.role, null);
     if ("error" in guard) return fail(guard.error, "transition");
 
-    // Resolve the owning team to a concrete BU user for the buOwnerId FK.
-    // Prefer the team's BU_MANAGER, then any active BU member. If the team
-    // has no BU users at all, refuse — the contract would have nobody to
-    // be visible to on the BU side.
-    const owner = await prisma.user.findFirst({
-      where: {
-        active: true,
-        department: data.buDepartment,
-        role: { in: ["BU_MEMBER", "BU_MANAGER"] },
-      },
-      orderBy: [{ role: "desc" }, { createdAt: "asc" }],
-      select: { id: true },
-    });
+    // Resolve BU owner: use explicit selection if provided and valid,
+    // otherwise fall back to auto-pick (BU_MANAGER first, then oldest BU_MEMBER).
+    let owner: { id: string } | null = null;
+    if (data.buOwnerId) {
+      owner = await prisma.user.findFirst({
+        where: {
+          id: data.buOwnerId,
+          active: true,
+          department: data.buDepartment,
+          role: { in: ["BU_MEMBER", "BU_MANAGER"] },
+        },
+        select: { id: true },
+      });
+      if (!owner) {
+        return fail("Selected BU owner is not valid for this team", "validation");
+      }
+    } else {
+      owner = await prisma.user.findFirst({
+        where: {
+          active: true,
+          department: data.buDepartment,
+          role: { in: ["BU_MEMBER", "BU_MANAGER"] },
+        },
+        orderBy: [{ role: "desc" }, { createdAt: "asc" }],
+        select: { id: true },
+      });
+    }
     if (!owner) {
       return fail(
         `Team "${data.buDepartment}" has no active BU members yet — add one in /admin/users before assigning a contract.`,
@@ -399,7 +414,7 @@ async function fileTransition(opts: {
       return fail("A file is required", "validation");
     }
 
-    const round = nextRoundForAction(opts.action, contract.currentRound, contract.status);
+    const round = nextRoundForAction(opts.action, contract.currentRound);
 
     // The user can advance the stage without attaching a file. Only when one
     // is provided do we upload to S3 and record a Version row.
@@ -452,7 +467,7 @@ async function fileTransition(opts: {
       // Per-action review-side bookkeeping. submittedAt / returnedAt use the
       // Legal-supplied stageDate so SLAs are computed from the real review
       // dates when entries are backfilled.
-      if (opts.action === "submitForReview") {
+      if (opts.action === "startReview" || opts.action === "resubmitForReview") {
         const holidays = await getHolidays();
         const slaDeadline = slaDeadlineFor(stageDate, SLA_DAYS, holidays);
         await tx.review.create({
@@ -513,29 +528,16 @@ async function fileTransition(opts: {
 
 
 // ───────────────────────────────────────────────────────────────────────────────
-// 2. assignTemplate
+// 2. startReview — REGISTERED → IN_LEGAL_REVIEW. Legal starts the review
+//    directly; no drafting step. Creates the first Review row and records
+//    SUBMITTED_FOR_REVIEW. Round stays at 0 for the first review cycle.
 // ───────────────────────────────────────────────────────────────────────────────
 
-export async function assignTemplate(input: FileTransitionInput): Promise<ActionResult> {
+export async function startReview(input: FileTransitionInput): Promise<ActionResult> {
   return fileTransition({
-    action: "assignTemplate",
-    stage: "TEMPLATE",
-    eventType: "TEMPLATE_ASSIGNED",
-    input,
-    notesField: "templateName",
-    buildContractUpdate: (_next, _c, stageDate) => ({ templateDate: stageDate }),
-  });
-}
-
-// ───────────────────────────────────────────────────────────────────────────────
-// 3. submitForReview
-// ───────────────────────────────────────────────────────────────────────────────
-
-export async function submitForReview(input: FileTransitionInput): Promise<ActionResult> {
-  return fileTransition({
-    action: "submitForReview",
+    action: "startReview",
     stage: "BU_DRAFT",
-    eventType: "DRAFT_SUBMITTED",
+    eventType: "SUBMITTED_FOR_REVIEW",
     input,
     notesField: "submitNotes",
   });
@@ -643,10 +645,9 @@ export async function autoPickupOnView(
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// 5b. reviseDraft — IN_LEGAL_REVIEW → DRAFTING. Legal asks the BU for another
-//     draft iteration: the current Review is closed (returnedAt stamped, like
-//     a normal review return), the contract goes back to DRAFTING, and the
-//     round counter bumps so the new draft cycle has its own number.
+// 5b. reviseDraft — IN_LEGAL_REVIEW → PENDING_BU_REVISION. Legal sends the
+//     contract back to BU owner for revision. Closes the current Review row,
+//     bumps round, and waits for Legal to resubmit after BU has revised.
 // ───────────────────────────────────────────────────────────────────────────────
 
 export async function reviseDraft(
@@ -682,7 +683,7 @@ export async function reviseDraft(
     const notes =
       (input.formData.get("legalNotes") as string | null)?.trim() || null;
     const oldRound = contract.currentRound;
-    const newRound = nextRoundForAction("revise", oldRound, contract.status);
+    const newRound = nextRoundForAction("revise", oldRound);
 
     await prisma.$transaction(async (tx) => {
       await tx.contract.update({
@@ -733,6 +734,21 @@ export async function reviseDraft(
   } catch (e) {
     return fail(e instanceof Error ? e.message : String(e), "exception");
   }
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// 5c. resubmitForReview — PENDING_BU_REVISION → IN_LEGAL_REVIEW. Legal confirms
+//     BU has revised and opens a new review for the current round.
+// ───────────────────────────────────────────────────────────────────────────────
+
+export async function resubmitForReview(input: FileTransitionInput): Promise<ActionResult> {
+  return fileTransition({
+    action: "resubmitForReview",
+    stage: "BU_DRAFT",
+    eventType: "RESUBMITTED_TO_LEGAL",
+    input,
+    notesField: "submitNotes",
+  });
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -1310,8 +1326,11 @@ export async function undoLastStage(
         }
       }
 
-      // Remove the Review row created by submitForReview.
-      if (lastTransition.eventType === "DRAFT_SUBMITTED") {
+      // Remove the Review row created by startReview or resubmitForReview.
+      if (
+        lastTransition.eventType === "SUBMITTED_FOR_REVIEW" ||
+        lastTransition.eventType === "RESUBMITTED_TO_LEGAL"
+      ) {
         await tx.review.deleteMany({
           where: {
             contractId: contract.id,

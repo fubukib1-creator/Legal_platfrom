@@ -14,10 +14,10 @@ export type ContractScope = {
 export type Permission =
   | "contract:view-all"
   | "contract:create"
-  | "contract:assignTemplate"
-  | "contract:submitForReview"
+  | "contract:startReview"
   | "contract:pickupReview"
   | "contract:revise"
+  | "contract:resubmitForReview"
   | "contract:markAwaitingSignature"
   | "contract:submitForSigning"
   | "contract:updateTracking"
@@ -37,10 +37,10 @@ export type Permission =
 export const PERMISSIONS: Readonly<Record<Permission, ReadonlyArray<Role>>> = {
   "contract:view-all": ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"],
   "contract:create": ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"],
-  "contract:assignTemplate": ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"],
-  "contract:submitForReview": ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"],
+  "contract:startReview": ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"],
   "contract:pickupReview": ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"],
   "contract:revise": ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"],
+  "contract:resubmitForReview": ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"],
   "contract:markAwaitingSignature": ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"],
   "contract:submitForSigning": ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"],
   "contract:updateTracking": ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"],

@@ -32,8 +32,8 @@ import { cn } from "@/lib/utils";
 // transition can land a contract in them.
 const FILTER_STATUSES: ContractStatus[] = [
   "REGISTERED",
-  "DRAFTING",
   "IN_LEGAL_REVIEW",
+  "PENDING_BU_REVISION",
   "AWAITING_SIGNATURE",
   "OUT_FOR_SIGNING",
   "CANCELLED",

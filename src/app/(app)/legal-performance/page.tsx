@@ -29,8 +29,8 @@ const DEADLINE_APPROACHING_HREF = "/contracts?status=IN_LEGAL_REVIEW&sla=warning
 // layer anyway.
 const PENDING_STATUSES = [
   "REGISTERED",
-  "DRAFTING",
   "IN_LEGAL_REVIEW",
+  "PENDING_BU_REVISION",
   "AWAITING_SIGNATURE",
 ];
 

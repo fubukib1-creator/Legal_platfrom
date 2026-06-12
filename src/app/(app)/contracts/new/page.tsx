@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
-import { listBUTeams } from "@/server/queries/contracts";
+import { listBUTeams, listBUUsersByTeam } from "@/server/queries/contracts";
 import { NewContractForm } from "./new-contract-form";
 
 export default async function NewContractPage() {
@@ -10,7 +10,10 @@ export default async function NewContractPage() {
   if (!hasPermission(session.user.role, "contract:create")) {
     redirect("/contracts");
   }
-  const teams = await listBUTeams();
+  const [teams, buUsersByTeam] = await Promise.all([
+    listBUTeams(),
+    listBUUsersByTeam(),
+  ]);
   return (
     <div className="flex flex-col gap-6">
       <header>
@@ -20,7 +23,7 @@ export default async function NewContractPage() {
           follow the stage updates.
         </p>
       </header>
-      <NewContractForm teams={teams} />
+      <NewContractForm teams={teams} buUsersByTeam={buUsersByTeam} />
     </div>
   );
 }

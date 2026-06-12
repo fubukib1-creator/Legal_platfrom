@@ -22,7 +22,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { createUser, setUserActive, updateUser } from "@/server/actions/admin";
+import { Badge } from "@/components/ui/badge";
+import {
+  createUser,
+  setUserActive,
+  updateUser,
+  getContractsForDepartment,
+  reassignContractOwner,
+  type ContractForReassign,
+} from "@/server/actions/admin";
 import { ALL_DEPARTMENTS } from "@/lib/departments";
 
 const ROLES: ReadonlyArray<readonly [Role, string]> = [
@@ -279,6 +287,224 @@ export function UserEditButton({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BU user contracts — expandable cell with reassign
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STATUS_LABEL: Record<string, string> = {
+  REGISTERED: "Registered",
+  AWAITING_TEMPLATE: "Awaiting template",
+  PENDING_BU_REVISION: "Sent back to BU",
+  IN_LEGAL_REVIEW: "Legal review",
+  WITH_COUNTERPARTY: "With counterparty",
+  CP_RESPONDED: "CP responded",
+  AWAITING_SIGNATURE: "Awaiting signature",
+  OUT_FOR_SIGNING: "Out for signing",
+  MONITORING: "Monitoring",
+  CANCELLED: "Cancelled",
+};
+
+type ContractsView = "list" | "pick" | "confirm";
+
+export function BUUserContractsButton({
+  userId,
+  userName,
+  department,
+  contractCount,
+}: {
+  userId: string;
+  userName: string;
+  department: string;
+  contractCount: number;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<ContractsView>("list");
+  const [allContracts, setAllContracts] = useState<ContractForReassign[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [confirmContract, setConfirmContract] = useState<ContractForReassign | null>(null);
+  const [reassigning, startReassign] = useTransition();
+
+  async function handleOpen() {
+    setOpen(true);
+    setView("list");
+    if (!allContracts) await fetchContracts();
+  }
+
+  async function fetchContracts() {
+    setLoading(true);
+    const result = await getContractsForDepartment(department);
+    if (result.success) setAllContracts(result.data);
+    else toast.error(result.error);
+    setLoading(false);
+  }
+
+  function handlePickContract(contract: ContractForReassign) {
+    if (contract.currentOwner?.id === userId) return;
+    if (contract.currentOwner) {
+      setConfirmContract(contract);
+      setView("confirm");
+    } else {
+      doReassign(contract.id);
+    }
+  }
+
+  function doReassign(contractId: string) {
+    startReassign(async () => {
+      const r = await reassignContractOwner({ contractId, newOwnerId: userId });
+      if (r.success) {
+        toast.success("Contract reassigned");
+        const result = await getContractsForDepartment(department);
+        if (result.success) setAllContracts(result.data);
+        setView("list");
+        setConfirmContract(null);
+        router.refresh();
+      } else {
+        toast.error(r.error);
+      }
+    });
+  }
+
+  const ownedContracts = allContracts?.filter((c) => c.currentOwner?.id === userId) ?? [];
+  const deptContracts = allContracts ?? [];
+
+  return (
+    <>
+      <button
+        type="button"
+        className="text-sm font-medium underline-offset-2 hover:underline text-slate-700 cursor-pointer"
+        onClick={handleOpen}
+      >
+        {contractCount}
+      </button>
+
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setView("list"); setConfirmContract(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {view === "list" && `${userName}'s contracts`}
+              {view === "pick" && "Assign a contract"}
+              {view === "confirm" && "Confirm reassign"}
+            </DialogTitle>
+            {view === "list" && (
+              <DialogDescription>{department} · {ownedContracts.length} owned</DialogDescription>
+            )}
+            {view === "pick" && (
+              <DialogDescription>
+                Select a contract from {department} to assign to {userName}.
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          {/* ── List view ── */}
+          {view === "list" && (
+            <div className="flex flex-col gap-3">
+              {loading ? (
+                <p className="text-sm text-slate-500">Loading…</p>
+              ) : ownedContracts.length === 0 ? (
+                <p className="text-sm text-slate-500">No contracts assigned yet.</p>
+              ) : (
+                <ul className="divide-y rounded-md border text-sm">
+                  {ownedContracts.map((c) => (
+                    <li key={c.id} className="flex items-center justify-between px-3 py-2">
+                      <div>
+                        <span className="font-mono text-xs text-slate-500">{c.contractNumber}</span>
+                        <p className="font-medium leading-snug">{c.title}</p>
+                      </div>
+                      <Badge variant="secondary" className="shrink-0 ml-3 text-xs">
+                        {STATUS_LABEL[c.status] ?? c.status}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="flex justify-between pt-1">
+                <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+                  Close
+                </Button>
+                <Button size="sm" onClick={() => setView("pick")}>
+                  + Add contract
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Pick view ── */}
+          {view === "pick" && (
+            <div className="flex flex-col gap-3">
+              {loading ? (
+                <p className="text-sm text-slate-500">Loading…</p>
+              ) : deptContracts.length === 0 ? (
+                <p className="text-sm text-slate-500">No contracts in {department}.</p>
+              ) : (
+                <ul className="divide-y rounded-md border text-sm max-h-72 overflow-y-auto">
+                  {deptContracts.map((c) => {
+                    const isOwned = c.currentOwner?.id === userId;
+                    return (
+                      <li
+                        key={c.id}
+                        className={`flex items-center justify-between px-3 py-2 ${
+                          isOwned ? "opacity-50 cursor-default" : "cursor-pointer hover:bg-slate-50"
+                        }`}
+                        onClick={() => !isOwned && handlePickContract(c)}
+                      >
+                        <div>
+                          <span className="font-mono text-xs text-slate-500">{c.contractNumber}</span>
+                          <p className="font-medium leading-snug">{c.title}</p>
+                          {c.currentOwner && !isOwned && (
+                            <p className="text-xs text-slate-400">Owned by {c.currentOwner.name}</p>
+                          )}
+                          {isOwned && (
+                            <p className="text-xs text-slate-400">Already assigned to {userName}</p>
+                          )}
+                        </div>
+                        <Badge variant="secondary" className="shrink-0 ml-3 text-xs">
+                          {STATUS_LABEL[c.status] ?? c.status}
+                        </Badge>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <div className="flex justify-between pt-1">
+                <Button variant="outline" size="sm" onClick={() => setView("list")}>
+                  Back
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Confirm view ── */}
+          {view === "confirm" && confirmContract && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm">
+                <span className="font-semibold">{confirmContract.contractNumber}</span>{" "}
+                {confirmContract.title} is currently assigned to{" "}
+                <span className="font-semibold">{confirmContract.currentOwner?.name}</span>.
+              </p>
+              <p className="text-sm text-slate-600">
+                Replace them with <span className="font-semibold">{userName}</span>?
+              </p>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => { setView("pick"); setConfirmContract(null); }}
+                  disabled={reassigning}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={() => doReassign(confirmContract.id)} disabled={reassigning}>
+                  {reassigning ? "Reassigning…" : "Confirm"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>

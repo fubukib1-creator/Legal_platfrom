@@ -135,6 +135,86 @@ export async function updateUser(
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
+// Contract owner reassignment
+// ───────────────────────────────────────────────────────────────────────────────
+
+export type ContractForReassign = {
+  id: string;
+  contractNumber: string;
+  title: string;
+  status: string;
+  currentOwner: { id: string; name: string } | null;
+};
+
+export async function getContractsForDepartment(
+  department: string,
+): Promise<AdminResult<ContractForReassign[]>> {
+  try {
+    await requireAdmin();
+    const rows = await prisma.contract.findMany({
+      where: { buDepartment: department, status: { not: "CANCELLED" } },
+      select: {
+        id: true,
+        contractNumber: true,
+        title: true,
+        status: true,
+        buOwner: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return {
+      success: true,
+      data: rows.map((r) => ({
+        id: r.id,
+        contractNumber: r.contractNumber,
+        title: r.title,
+        status: r.status,
+        currentOwner: r.buOwner,
+      })),
+    };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function reassignContractOwner(input: {
+  contractId: string;
+  newOwnerId: string;
+}): Promise<AdminResult> {
+  try {
+    await requireAdmin();
+    const [contract, newOwner] = await Promise.all([
+      prisma.contract.findUnique({
+        where: { id: input.contractId },
+        select: { id: true, buDepartment: true },
+      }),
+      prisma.user.findUnique({
+        where: { id: input.newOwnerId },
+        select: { id: true, department: true, role: true, active: true },
+      }),
+    ]);
+    if (!contract) return { success: false, error: "Contract not found" };
+    if (!newOwner) return { success: false, error: "User not found" };
+    if (!newOwner.active) return { success: false, error: "User is inactive" };
+    if (newOwner.department !== contract.buDepartment) {
+      return { success: false, error: "User is not in the same department as the contract" };
+    }
+    if (newOwner.role !== "BU_MEMBER" && newOwner.role !== "BU_MANAGER") {
+      return { success: false, error: "User must be a BU member or manager" };
+    }
+    await prisma.contract.update({
+      where: { id: input.contractId },
+      data: { buOwnerId: input.newOwnerId },
+    });
+    revalidatePath("/admin/users");
+    revalidatePath("/contracts");
+    return { success: true, data: undefined };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
 // Holidays
 // ───────────────────────────────────────────────────────────────────────────────
 

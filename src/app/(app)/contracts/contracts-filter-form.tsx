@@ -16,7 +16,7 @@ import { CONTRACT_TYPES } from "@/lib/contract-types";
 const STATUS_LABEL: Record<ContractStatus, string> = {
   REGISTERED: "Registered",
   AWAITING_TEMPLATE: "Awaiting template",
-  DRAFTING: "Drafting",
+  PENDING_BU_REVISION: "Sent back to BU owner",
   IN_LEGAL_REVIEW: "In legal review",
   WITH_COUNTERPARTY: "With counterparty",
   CP_RESPONDED: "CP responded",

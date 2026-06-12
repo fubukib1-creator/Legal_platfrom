@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 const STYLE: Record<ContractStatus, { label: string; className: string }> = {
   REGISTERED: { label: "Registered", className: "bg-slate-200 text-slate-900" },
   AWAITING_TEMPLATE: { label: "Awaiting template", className: "bg-slate-200 text-slate-900" },
-  DRAFTING: { label: "Drafting", className: "bg-blue-100 text-blue-900" },
+  PENDING_BU_REVISION: { label: "Sent back to BU owner", className: "bg-yellow-100 text-yellow-900" },
   IN_LEGAL_REVIEW: { label: "In legal review", className: "bg-amber-100 text-amber-900" },
   WITH_COUNTERPARTY: { label: "With counterparty (legacy)", className: "bg-slate-200 text-slate-900" },
   CP_RESPONDED: { label: "CP responded (legacy)", className: "bg-slate-200 text-slate-900" },

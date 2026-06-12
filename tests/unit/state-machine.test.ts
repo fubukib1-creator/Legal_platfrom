@@ -7,23 +7,14 @@ import {
 } from "@/lib/state-machine";
 import type { ContractStatus } from "@prisma/client";
 
-// The dashboard is a stage-lock tool — Legal drives every transition. These
-// tests pin down that BU roles can only view contracts (no transitions), and
-// every transition is permitted to LEGAL_REVIEWER / LEGAL_LEAD / ADMIN.
-
 describe("state machine — legal transitions", () => {
   it("LEGAL_REVIEWER can register a new contract (no current status)", () => {
     const r = evaluateTransition("registerContract", "LEGAL_REVIEWER", null);
     expect(r).toEqual({ allowed: true, nextStatus: "REGISTERED" });
   });
 
-  it("LEGAL_REVIEWER can assign template from REGISTERED → DRAFTING", () => {
-    const r = evaluateTransition("assignTemplate", "LEGAL_REVIEWER", "REGISTERED");
-    expect(r).toEqual({ allowed: true, nextStatus: "DRAFTING" });
-  });
-
-  it("LEGAL_REVIEWER can submitForReview from DRAFTING", () => {
-    const r = evaluateTransition("submitForReview", "LEGAL_REVIEWER", "DRAFTING");
+  it("LEGAL_REVIEWER can startReview from REGISTERED → IN_LEGAL_REVIEW", () => {
+    const r = evaluateTransition("startReview", "LEGAL_REVIEWER", "REGISTERED");
     expect(r).toEqual({ allowed: true, nextStatus: "IN_LEGAL_REVIEW" });
   });
 
@@ -32,17 +23,18 @@ describe("state machine — legal transitions", () => {
     expect(r).toEqual({ allowed: true, nextStatus: "IN_LEGAL_REVIEW" });
   });
 
-  it("LEGAL_REVIEWER can revise from IN_LEGAL_REVIEW → DRAFTING", () => {
+  it("LEGAL_REVIEWER can revise from IN_LEGAL_REVIEW → PENDING_BU_REVISION", () => {
     const r = evaluateTransition("revise", "LEGAL_REVIEWER", "IN_LEGAL_REVIEW");
-    expect(r).toEqual({ allowed: true, nextStatus: "DRAFTING" });
+    expect(r).toEqual({ allowed: true, nextStatus: "PENDING_BU_REVISION" });
+  });
+
+  it("LEGAL_REVIEWER can resubmitForReview from PENDING_BU_REVISION → IN_LEGAL_REVIEW", () => {
+    const r = evaluateTransition("resubmitForReview", "LEGAL_REVIEWER", "PENDING_BU_REVISION");
+    expect(r).toEqual({ allowed: true, nextStatus: "IN_LEGAL_REVIEW" });
   });
 
   it("LEGAL_REVIEWER can markAwaitingSignature from IN_LEGAL_REVIEW → AWAITING_SIGNATURE", () => {
-    const r = evaluateTransition(
-      "markAwaitingSignature",
-      "LEGAL_REVIEWER",
-      "IN_LEGAL_REVIEW",
-    );
+    const r = evaluateTransition("markAwaitingSignature", "LEGAL_REVIEWER", "IN_LEGAL_REVIEW");
     expect(r).toEqual({ allowed: true, nextStatus: "AWAITING_SIGNATURE" });
   });
 
@@ -53,7 +45,7 @@ describe("state machine — legal transitions", () => {
 
   it.each<[ContractStatus]>([
     ["REGISTERED"],
-    ["DRAFTING"],
+    ["PENDING_BU_REVISION"],
     ["IN_LEGAL_REVIEW"],
     ["AWAITING_SIGNATURE"],
   ])("LEGAL_LEAD can cancel from %s", (from) => {
@@ -78,22 +70,13 @@ describe("state machine — illegal transitions", () => {
     expect(r).toEqual({ allowed: false, reason: "role-not-permitted" });
   });
 
-  it("BU_MEMBER cannot assign template", () => {
-    const r = evaluateTransition("assignTemplate", "BU_MEMBER", "REGISTERED");
-    expect(r).toEqual({ allowed: false, reason: "role-not-permitted" });
-  });
-
-  it("BU_MEMBER cannot submitForReview (BU is read-only)", () => {
-    const r = evaluateTransition("submitForReview", "BU_MEMBER", "DRAFTING");
+  it("BU_MEMBER cannot startReview (Legal-only)", () => {
+    const r = evaluateTransition("startReview", "BU_MEMBER", "REGISTERED");
     expect(r).toEqual({ allowed: false, reason: "role-not-permitted" });
   });
 
   it("BU_MEMBER cannot markAwaitingSignature (BU is read-only)", () => {
-    const r = evaluateTransition(
-      "markAwaitingSignature",
-      "BU_MEMBER",
-      "IN_LEGAL_REVIEW",
-    );
+    const r = evaluateTransition("markAwaitingSignature", "BU_MEMBER", "IN_LEGAL_REVIEW");
     expect(r).toEqual({ allowed: false, reason: "role-not-permitted" });
   });
 
@@ -102,8 +85,8 @@ describe("state machine — illegal transitions", () => {
     expect(r).toEqual({ allowed: false, reason: "role-not-permitted" });
   });
 
-  it("revise not allowed from DRAFTING (only from IN_LEGAL_REVIEW)", () => {
-    const r = evaluateTransition("revise", "LEGAL_REVIEWER", "DRAFTING");
+  it("revise not allowed from REGISTERED (only from IN_LEGAL_REVIEW)", () => {
+    const r = evaluateTransition("revise", "LEGAL_REVIEWER", "REGISTERED");
     expect(r).toEqual({ allowed: false, reason: "wrong-source-status" });
   });
 
@@ -112,8 +95,8 @@ describe("state machine — illegal transitions", () => {
     expect(r).toEqual({ allowed: false, reason: "role-not-permitted" });
   });
 
-  it("submitForReview not allowed from REGISTERED", () => {
-    const r = evaluateTransition("submitForReview", "LEGAL_REVIEWER", "REGISTERED");
+  it("startReview not allowed from IN_LEGAL_REVIEW", () => {
+    const r = evaluateTransition("startReview", "LEGAL_REVIEWER", "IN_LEGAL_REVIEW");
     expect(r).toEqual({ allowed: false, reason: "wrong-source-status" });
   });
 
@@ -128,54 +111,49 @@ describe("state machine — illegal transitions", () => {
   });
 
   it("BU_MEMBER cannot cancel (Legal-only)", () => {
-    const r = evaluateTransition("cancelContract", "BU_MEMBER", "DRAFTING");
+    const r = evaluateTransition("cancelContract", "BU_MEMBER", "PENDING_BU_REVISION");
     expect(r).toEqual({ allowed: false, reason: "role-not-permitted" });
   });
 
   it("BU_MANAGER cannot cancel (Legal-only)", () => {
-    const r = evaluateTransition("cancelContract", "BU_MANAGER", "DRAFTING");
+    const r = evaluateTransition("cancelContract", "BU_MANAGER", "PENDING_BU_REVISION");
     expect(r).toEqual({ allowed: false, reason: "role-not-permitted" });
   });
 
   it("LEGAL_REVIEWER cannot cancel (must be LEGAL_LEAD or ADMIN)", () => {
-    const r = evaluateTransition("cancelContract", "LEGAL_REVIEWER", "DRAFTING");
+    const r = evaluateTransition("cancelContract", "LEGAL_REVIEWER", "PENDING_BU_REVISION");
     expect(r).toEqual({ allowed: false, reason: "role-not-permitted" });
   });
 
   it("registerContract on existing contract is rejected (already has status)", () => {
-    const r = evaluateTransition("registerContract", "LEGAL_REVIEWER", "DRAFTING");
+    const r = evaluateTransition("registerContract", "LEGAL_REVIEWER", "REGISTERED");
     expect(r).toEqual({ allowed: false, reason: "wrong-source-status" });
   });
 });
 
 describe("nextRoundForAction", () => {
-  it("first submitForReview from DRAFTING (round 0) → round 1", () => {
-    expect(nextRoundForAction("submitForReview", 0, "DRAFTING")).toBe(1);
+  it("startReview from REGISTERED does not bump round (round stays 0)", () => {
+    expect(nextRoundForAction("startReview", 0)).toBe(0);
   });
 
-  it("non-submit actions never change round (except revise)", () => {
-    expect(nextRoundForAction("markAwaitingSignature", 1, "IN_LEGAL_REVIEW")).toBe(1);
-    expect(nextRoundForAction("submitForSigning", 3, "AWAITING_SIGNATURE")).toBe(3);
+  it("non-revise actions never change round", () => {
+    expect(nextRoundForAction("markAwaitingSignature", 1)).toBe(1);
+    expect(nextRoundForAction("submitForSigning", 3)).toBe(3);
+    expect(nextRoundForAction("resubmitForReview", 1)).toBe(1);
   });
 
   it("revise from IN_LEGAL_REVIEW increments round", () => {
-    expect(nextRoundForAction("revise", 1, "IN_LEGAL_REVIEW")).toBe(2);
-    expect(nextRoundForAction("revise", 3, "IN_LEGAL_REVIEW")).toBe(4);
-  });
-
-  it("submitForReview from DRAFTING after revise does NOT double-bump", () => {
-    // After revise: round was already bumped on the way to DRAFTING. The
-    // resubmit re-opens the same round with a new Review row.
-    expect(nextRoundForAction("submitForReview", 2, "DRAFTING")).toBe(2);
-    expect(nextRoundForAction("submitForReview", 5, "DRAFTING")).toBe(5);
+    expect(nextRoundForAction("revise", 0)).toBe(1);
+    expect(nextRoundForAction("revise", 1)).toBe(2);
+    expect(nextRoundForAction("revise", 3)).toBe(4);
   });
 });
 
 describe("TRANSITION_RULES — coverage sanity", () => {
   const expectedActions: TransitionAction[] = [
     "registerContract",
-    "assignTemplate",
-    "submitForReview",
+    "startReview",
+    "resubmitForReview",
     "pickupReview",
     "revise",
     "markAwaitingSignature",

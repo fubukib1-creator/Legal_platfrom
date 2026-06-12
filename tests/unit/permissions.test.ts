@@ -28,12 +28,12 @@ describe("permissions matrix — Legal-only stage-lock model", () => {
     expect(hasPermission("BU_MANAGER", "contract:create")).toBe(false);
   });
 
-  it("assignTemplate is Legal/Admin only", () => {
-    expect(hasPermission("LEGAL_REVIEWER", "contract:assignTemplate")).toBe(true);
-    expect(hasPermission("LEGAL_LEAD", "contract:assignTemplate")).toBe(true);
-    expect(hasPermission("ADMIN", "contract:assignTemplate")).toBe(true);
-    expect(hasPermission("BU_MEMBER", "contract:assignTemplate")).toBe(false);
-    expect(hasPermission("BU_MANAGER", "contract:assignTemplate")).toBe(false);
+  it("startReview is Legal/Admin only", () => {
+    expect(hasPermission("LEGAL_REVIEWER", "contract:startReview")).toBe(true);
+    expect(hasPermission("LEGAL_LEAD", "contract:startReview")).toBe(true);
+    expect(hasPermission("ADMIN", "contract:startReview")).toBe(true);
+    expect(hasPermission("BU_MEMBER", "contract:startReview")).toBe(false);
+    expect(hasPermission("BU_MANAGER", "contract:startReview")).toBe(false);
   });
 
   it("cancel is LEGAL_LEAD / ADMIN only", () => {
@@ -46,8 +46,8 @@ describe("permissions matrix — Legal-only stage-lock model", () => {
 
   const everyContractAction: Permission[] = [
     "contract:create",
-    "contract:assignTemplate",
-    "contract:submitForReview",
+    "contract:startReview",
+    "contract:resubmitForReview",
     "contract:pickupReview",
     "contract:revise",
     "contract:markAwaitingSignature",

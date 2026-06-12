@@ -2,10 +2,10 @@ import type { ContractStatus, Role } from "@prisma/client";
 
 export type TransitionAction =
   | "registerContract"
-  | "assignTemplate"
-  | "submitForReview"
+  | "startReview"
   | "pickupReview"
   | "revise"
+  | "resubmitForReview"
   | "markAwaitingSignature"
   | "submitForSigning"
   | "updateTracking"
@@ -26,9 +26,6 @@ type Rule = {
   allowedRoles: ReadonlyArray<Role>;
 };
 
-// AWAITING_TEMPLATE is reserved in the enum but not used in v1 — assignTemplate
-// transitions REGISTERED directly to DRAFTING in a single action.
-// All transitions are Legal-only.
 const LEGAL_ROLES = ["LEGAL_REVIEWER", "LEGAL_LEAD", "ADMIN"] as const;
 
 export const TRANSITION_RULES: Readonly<Record<TransitionAction, Rule>> = {
@@ -37,13 +34,9 @@ export const TRANSITION_RULES: Readonly<Record<TransitionAction, Rule>> = {
     to: "REGISTERED",
     allowedRoles: LEGAL_ROLES,
   },
-  assignTemplate: {
+  // Legal starts review directly from REGISTERED — no drafting step.
+  startReview: {
     from: ["REGISTERED"],
-    to: "DRAFTING",
-    allowedRoles: LEGAL_ROLES,
-  },
-  submitForReview: {
-    from: ["DRAFTING"],
     to: "IN_LEGAL_REVIEW",
     allowedRoles: LEGAL_ROLES,
   },
@@ -52,33 +45,33 @@ export const TRANSITION_RULES: Readonly<Record<TransitionAction, Rule>> = {
     to: "self",
     allowedRoles: LEGAL_ROLES,
   },
-  // Legal sends the contract back to BU for another draft iteration. Closes
-  // the current Review and routes back to DRAFTING with round + 1.
+  // Legal sends the contract back to BU owner for revision.
   revise: {
     from: ["IN_LEGAL_REVIEW"],
-    to: "DRAFTING",
+    to: "PENDING_BU_REVISION",
     allowedRoles: LEGAL_ROLES,
   },
-  // Collapsed transition: legal moves IN_LEGAL_REVIEW straight to
-  // AWAITING_SIGNATURE in one step (replaces the old returnReview→markFinal
-  // pair and the now-removed REVIEW_RETURNED stage).
+  // Legal resubmits after BU has revised — opens a new review with the same round.
+  resubmitForReview: {
+    from: ["PENDING_BU_REVISION"],
+    to: "IN_LEGAL_REVIEW",
+    allowedRoles: LEGAL_ROLES,
+  },
   markAwaitingSignature: {
     from: ["IN_LEGAL_REVIEW"],
     to: "AWAITING_SIGNATURE",
     allowedRoles: LEGAL_ROLES,
   },
-  // Terminal: marks the contract as signed and uploaded.
   submitForSigning: {
     from: ["AWAITING_SIGNATURE"],
     to: "OUT_FOR_SIGNING",
     allowedRoles: LEGAL_ROLES,
   },
-  // Edit the lifecycle tracking fields without changing status.
   updateTracking: {
     from: [
       "REGISTERED",
       "AWAITING_TEMPLATE",
-      "DRAFTING",
+      "PENDING_BU_REVISION",
       "IN_LEGAL_REVIEW",
       "AWAITING_SIGNATURE",
       "OUT_FOR_SIGNING",
@@ -90,7 +83,7 @@ export const TRANSITION_RULES: Readonly<Record<TransitionAction, Rule>> = {
     from: [
       "REGISTERED",
       "AWAITING_TEMPLATE",
-      "DRAFTING",
+      "PENDING_BU_REVISION",
       "IN_LEGAL_REVIEW",
       "AWAITING_SIGNATURE",
     ],
@@ -130,19 +123,14 @@ export function evaluateTransition(
 }
 
 // Round increment rules:
-//   - submitForReview from DRAFTING (round 0)        → round 1 (first review)
-//   - submitForReview from DRAFTING with round > 0    → no change
-//       (revise already bumped the round on the way back to drafting; the
-//       resubmit re-opens the same round number with a new Review)
-//   - revise from IN_LEGAL_REVIEW                     → round + 1
-//   - everything else                                 → unchanged
+//   - revise from IN_LEGAL_REVIEW → round + 1 (legal finished a review cycle)
+//   - everything else             → unchanged
+// Round starts at 0 and increments each time legal sends back to BU.
+// Round 0 = first review cycle, round 1 = after first revision, etc.
 export function nextRoundForAction(
   action: TransitionAction,
   currentRound: number,
-  currentStatus: ContractStatus | null,
 ): number {
   if (action === "revise") return currentRound + 1;
-  if (action !== "submitForReview") return currentRound;
-  if (currentStatus === "DRAFTING" && currentRound === 0) return 1;
   return currentRound;
 }

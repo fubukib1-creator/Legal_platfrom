@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ContractFlow — VPS Command Reference</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
+
+    header {
+      background: linear-gradient(135deg, #1F3864 0%, #2E75B6 100%);
+      color: white; padding: 2rem 2.5rem;
+    }
+    header h1 { font-size: 1.8rem; font-weight: 700; }
+    header p { font-size: 0.9rem; opacity: 0.8; margin-top: 0.3rem; }
+
+    .info-bar {
+      background: #fff; border-bottom: 1px solid #e0e0e0;
+      padding: 0.8rem 2.5rem; display: flex; gap: 2rem; flex-wrap: wrap;
+      font-size: 0.85rem; color: #555;
+    }
+    .info-bar span b { color: #1F3864; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    .toc {
+      background: white; border-radius: 10px; padding: 1.5rem;
+      margin-bottom: 2rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .toc h2 { font-size: 1rem; font-weight: 700; color: #1F3864; margin-bottom: 0.8rem; }
+    .toc ol { padding-left: 1.2rem; }
+    .toc li { margin: 0.3rem 0; }
+    .toc a { color: #2E75B6; text-decoration: none; font-size: 0.9rem; }
+    .toc a:hover { text-decoration: underline; }
+
+    section { margin-bottom: 2.5rem; }
+    section h2 {
+      font-size: 1.1rem; font-weight: 700; color: #1F3864;
+      border-left: 4px solid #2E75B6; padding-left: 0.8rem;
+      margin-bottom: 1rem;
+    }
+
+    .card {
+      background: white; border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .card-title {
+      background: #f7f9fc; border-bottom: 1px solid #e8ecf0;
+      padding: 0.6rem 1rem; font-size: 0.85rem; font-weight: 600;
+      color: #444; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .card-body { padding: 0; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th {
+      background: #f0f4f8; text-align: left;
+      padding: 0.6rem 1rem; color: #333; font-weight: 600;
+      border-bottom: 1px solid #dde3ea;
+    }
+    td { padding: 0.55rem 1rem; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafbfc; }
+
+    code {
+      font-family: 'Consolas', 'Courier New', monospace;
+      background: #1e2a3a; color: #7dd3fc;
+      padding: 0.15rem 0.45rem; border-radius: 4px;
+      font-size: 0.82rem; cursor: pointer; display: inline-block;
+      transition: background 0.15s;
+    }
+    code:hover { background: #2E75B6; }
+
+    .note {
+      background: #fffbeb; border: 1px solid #fcd34d;
+      border-radius: 8px; padding: 0.8rem 1rem;
+      font-size: 0.84rem; color: #78350f; margin-bottom: 1rem;
+    }
+    .danger {
+      background: #fef2f2; border: 1px solid #fca5a5;
+      border-radius: 8px; padding: 0.8rem 1rem;
+      font-size: 0.84rem; color: #7f1d1d; margin-bottom: 1rem;
+    }
+
+    .badge {
+      display: inline-block; font-size: 0.72rem; padding: 0.1rem 0.5rem;
+      border-radius: 99px; font-weight: 600; margin-left: 0.3rem;
+    }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-red   { background: #fee2e2; color: #991b1b; }
+    .badge-yellow{ background: #fef9c3; color: #854d0e; }
+
+    .copied {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: #1F3864; color: white; padding: 0.6rem 1.2rem;
+      border-radius: 8px; font-size: 0.85rem; display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    footer {
+      text-align: center; padding: 2rem;
+      font-size: 0.8rem; color: #999;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>ContractFlow — VPS Command Reference</h1>
+  <p>คู่มือคำสั่งสำหรับ MA / Fix / Deploy บน VPS srv1450455</p>
+</header>
+
+<div class="info-bar">
+  <span><b>Server:</b> srv1450455</span>
+  <span><b>IP:</b> 187.77.130.205</span>
+  <span><b>Domain:</b> innopowerlegal.cloud</span>
+  <span><b>OS:</b> Ubuntu 24.04</span>
+  <span><b>App path:</b> /root/Legal_platfrom</span>
+  <span><b>Port:</b> 3001</span>
+  <span><b>DB:</b> contractflow @ localhost:5432</span>
+</div>
+
+<div class="container">
+
+  <div class="toc">
+    <h2>สารบัญ</h2>
+    <ol>
+      <li><a href="#app">App (PM2)</a></li>
+      <li><a href="#deploy">Deploy / Update Code</a></li>
+      <li><a href="#db">Database (PostgreSQL)</a></li>
+      <li><a href="#minio">MinIO (Storage)</a></li>
+      <li><a href="#nginx">Nginx</a></li>
+      <li><a href="#cron">Cron Jobs</a></li>
+      <li><a href="#env">Environment Variables</a></li>
+      <li><a href="#logs">Logs & Debug</a></li>
+      <li><a href="#system">System</a></li>
+    </ol>
+  </div>
+
+  <!-- APP -->
+  <section id="app">
+    <h2>1. App (PM2)</h2>
+    <div class="card">
+      <div class="card-title">🟢 สถานะ / เริ่ม / หยุด</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>pm2 status</code></td><td>ดูสถานะ app ทั้งหมด</td></tr>
+          <tr><td><code>pm2 restart contractflow</code></td><td>restart app</td></tr>
+          <tr><td><code>pm2 stop contractflow</code></td><td>หยุด app</td></tr>
+          <tr><td><code>pm2 start contractflow</code></td><td>เริ่ม app</td></tr>
+          <tr><td><code>pm2 logs contractflow --lines 50 --nostream</code></td><td>ดู log ล่าสุด 50 บรรทัด</td></tr>
+          <tr><td><code>pm2 save</code></td><td>บันทึก config ให้ auto-start หลัง reboot</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="note">⚠️ ถ้า restart แล้ว status เป็น <b>errored</b> ให้ดู log ทันที: <code>pm2 logs contractflow --lines 100 --nostream</code></div>
+  </section>
+
+  <!-- DEPLOY -->
+  <section id="deploy">
+    <h2>2. Deploy / Update Code</h2>
+    <div class="card">
+      <div class="card-title">🚀 อัปเดต code จาก GitHub</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>cd /root/Legal_platfrom</code></td><td>เข้า project directory</td></tr>
+          <tr><td><code>git pull</code></td><td>ดึง code ล่าสุดจาก GitHub</td></tr>
+          <tr><td><code>git log --oneline -5</code></td><td>ดู commit ล่าสุด 5 อัน</td></tr>
+          <tr><td><code>pnpm install</code></td><td>ติดตั้ง dependencies ใหม่ (ถ้ามี package เพิ่ม)</td></tr>
+          <tr><td><code>pnpm build</code></td><td>build production</td></tr>
+          <tr><td><code>npx prisma migrate deploy</code></td><td>รัน DB migration (ถ้ามี schema เปลี่ยน)</td></tr>
+          <tr><td><code>pm2 restart contractflow</code></td><td>restart app</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="note">📌 Full deploy command: <code>cd /root/Legal_platfrom && git pull && pnpm install && pnpm build && pm2 restart contractflow</code></div>
+    <div class="danger">🚫 อย่ารัน <b>pnpm db:seed</b> บน production เด็ดขาด — จะสร้าง demo data ปลอมเข้า DB</div>
+  </section>
+
+  <!-- DB -->
+  <section id="db">
+    <h2>3. Database (PostgreSQL)</h2>
+    <div class="card">
+      <div class="card-title">🗄️ เข้า psql</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>sudo -u postgres psql -d contractflow</code></td><td>เข้า DB contractflow</td></tr>
+          <tr><td><code>\dt</code></td><td>ดู table ทั้งหมด</td></tr>
+          <tr><td><code>\q</code></td><td>ออกจาก psql</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">👤 จัดการ User</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>SELECT id, email, name, role, active FROM "User";</code></td><td>ดู user ทั้งหมด</td></tr>
+          <tr>
+            <td><code>node -e "const b=require('bcryptjs'); b.hash('NewPass123',10).then(h=>console.log(h))"</code></td>
+            <td>generate bcrypt hash สำหรับ password ใหม่</td>
+          </tr>
+          <tr>
+            <td><code>UPDATE "User" SET "passwordHash"='HASH' WHERE email='user@example.com';</code></td>
+            <td>เปลี่ยน password ใน DB (แทน HASH ด้วย bcrypt hash)</td>
+          </tr>
+          <tr>
+            <td><code>UPDATE "User" SET active=false WHERE email='user@example.com';</code></td>
+            <td>ปิดการใช้งาน user</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 สร้าง Admin คนแรก (กรณี reset DB)</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">ขั้นตอน</th><th>คำสั่ง</th></tr>
+          <tr>
+            <td>1. Generate hash</td>
+            <td><code>node -e "const b=require('bcryptjs'); b.hash('YourPassword',10).then(h=>console.log(h))"</code></td>
+          </tr>
+          <tr>
+            <td>2. Insert admin</td>
+            <td><code>sudo -u postgres psql -d contractflow -c "INSERT INTO \"User\" (id, email, name, role, department, \"passwordHash\", active) VALUES (gen_random_uuid(), 'admin@innopower.co.th', 'Admin', 'ADMIN', 'IT', 'HASH_HERE', true);"</code></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔍 Query ที่ใช้บ่อย</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>SELECT * FROM "Contract" ORDER BY "createdAt" DESC LIMIT 10;</code></td><td>ดูสัญญาล่าสุด 10 รายการ</td></tr>
+          <tr><td><code>SELECT channel, status, COUNT(*) FROM "NotificationLog" GROUP BY channel, status;</code></td><td>สรุปสถานะการส่งเมล/LINE</td></tr>
+          <tr><td><code>SELECT * FROM "NotificationLog" WHERE status='failed' ORDER BY "sentAt" DESC LIMIT 20;</code></td><td>ดูเมลที่ส่งไม่สำเร็จ</td></tr>
+          <tr><td><code>SELECT * FROM "Holiday" ORDER BY date;</code></td><td>ดูวันหยุดทั้งหมด</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- MINIO -->
+  <section id="minio">
+    <h2>4. MinIO (Storage)</h2>
+    <div class="card">
+      <div class="card-title">🪣 จัดการ MinIO</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>systemctl status minio</code></td><td>ดูสถานะ MinIO</td></tr>
+          <tr><td><code>systemctl restart minio</code></td><td>restart MinIO</td></tr>
+          <tr><td><code>systemctl stop minio</code></td><td>หยุด MinIO</td></tr>
+          <tr><td><code>mc alias set local http://localhost:9000 minioadmin Minio1234Strong</code></td><td>set alias mc (รันครั้งแรก)</td></tr>
+          <tr><td><code>mc ls local/contracts</code></td><td>ดูไฟล์ใน bucket contracts</td></tr>
+          <tr><td><code>mc du local/contracts</code></td><td>ดูขนาด bucket</td></tr>
+          <tr><td><code>du -sh /data/minio</code></td><td>ดูพื้นที่ที่ใช้ทั้งหมด</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="note">📁 ไฟล์เก็บที่ <b>/data/minio</b> | Console UI: <b>http://localhost:9001</b> (เข้าได้แค่ใน server)<br>
+    Credentials: <b>minioadmin</b> / <b>Minio1234Strong</b></div>
+  </section>
+
+  <!-- NGINX -->
+  <section id="nginx">
+    <h2>5. Nginx</h2>
+    <div class="card">
+      <div class="card-title">🌐 จัดการ Nginx</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>nginx -t</code></td><td>ตรวจ config syntax</td></tr>
+          <tr><td><code>systemctl reload nginx</code></td><td>reload config (ไม่ต้อง restart)</td></tr>
+          <tr><td><code>systemctl restart nginx</code></td><td>restart Nginx</td></tr>
+          <tr><td><code>cat /etc/nginx/sites-enabled/contractflow</code></td><td>ดู config ปัจจุบัน</td></tr>
+          <tr><td><code>nano /etc/nginx/sites-available/contractflow</code></td><td>แก้ config</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="note">⚠️ ตอนนี้ Hostinger force HTTPS — เข้าผ่าน port 80 ไม่ได้ ต้องใช้ <b>http://187.77.130.205:3001</b> ไปก่อน จนกว่าจะมี domain + SSL</div>
+  </section>
+
+  <!-- CRON -->
+  <section id="cron">
+    <h2>6. Cron Jobs</h2>
+    <div class="card">
+      <div class="card-title">⏰ ดู / แก้ Cron</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>crontab -l</code></td><td>ดู cron ทั้งหมด</td></tr>
+          <tr><td><code>crontab -e</code></td><td>แก้ cron</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🧪 ทดสอบ Cron Manual</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr>
+            <td><code>curl -s http://localhost:3001/api/cron/sla-recalc -H "authorization: Bearer 4qU48FBbtS7K7eXY+pTH0XnjyqPyiOafRQNSLBY3ZPk="</code></td>
+            <td>รัน SLA recalc ทันที</td>
+          </tr>
+          <tr>
+            <td><code>curl -s http://localhost:3001/api/cron/digest -H "authorization: Bearer 4qU48FBbtS7K7eXY+pTH0XnjyqPyiOafRQNSLBY3ZPk="</code></td>
+            <td>รัน daily digest ทันที</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div class="note">📅 Schedule: sla-recalc ทุกชั่วโมง 08:00-18:00 BKK วันธรรมดา | digest 08:30 BKK วันธรรมดา</div>
+  </section>
+
+  <!-- ENV -->
+  <section id="env">
+    <h2>7. Environment Variables</h2>
+    <div class="card">
+      <div class="card-title">⚙️ แก้ .env</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>cat /root/Legal_platfrom/.env</code></td><td>ดู .env ปัจจุบัน</td></tr>
+          <tr><td><code>nano /root/Legal_platfrom/.env</code></td><td>แก้ .env</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔑 Key Variables</div>
+      <div class="card-body">
+        <table>
+          <tr><th>Variable</th><th>ค่าปัจจุบัน</th><th>หมายเหตุ</th></tr>
+          <tr><td><code>NEXTAUTH_URL</code></td><td>https://innopowerlegal.cloud</td><td>✅ domain จริงแล้ว</td></tr>
+          <tr><td><code>DATABASE_URL</code></td><td>postgresql://contractflow:Password1234@localhost:5432/contractflow</td><td></td></tr>
+          <tr><td><code>S3_ENDPOINT</code></td><td>http://localhost:9000</td><td>MinIO local</td></tr>
+          <tr><td><code>SMTP_HOST</code></td><td>smtp.office365.com</td><td>รอ IT whitelist IP</td></tr>
+          <tr><td><code>SMTP_PORT</code></td><td>25</td><td>Option B (no auth)</td></tr>
+          <tr><td><code>SMTP_FROM</code></td><td>contractflow@innopower.co.th</td><td></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="note">⚠️ หลังแก้ .env ต้อง <code>pm2 restart contractflow</code> ทุกครั้ง</div>
+  </section>
+
+  <!-- LOGS -->
+  <section id="logs">
+    <h2>8. Logs & Debug</h2>
+    <div class="card">
+      <div class="card-title">📋 ดู Logs</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>pm2 logs contractflow --lines 50 --nostream</code></td><td>log ล่าสุด 50 บรรทัด</td></tr>
+          <tr><td><code>pm2 logs contractflow</code></td><td>ดู log แบบ live (Ctrl+C ออก)</td></tr>
+          <tr><td><code>journalctl -u minio --since "1 hour ago"</code></td><td>log MinIO 1 ชั่วโมงที่ผ่านมา</td></tr>
+          <tr><td><code>tail -f /var/log/nginx/error.log</code></td><td>Nginx error log แบบ live</td></tr>
+          <tr><td><code>tail -f /var/log/nginx/access.log</code></td><td>Nginx access log แบบ live</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔍 Debug App</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>curl -s http://localhost:3001</code></td><td>ทดสอบว่า app ตอบสนองไหม</td></tr>
+          <tr><td><code>curl -s http://localhost:9000/minio/health/live</code></td><td>ทดสอบว่า MinIO รันอยู่ไหม</td></tr>
+          <tr><td><code>sudo -u postgres psql -d contractflow -c "SELECT 1;"</code></td><td>ทดสอบ DB connection</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SYSTEM -->
+  <section id="system">
+    <h2>9. System</h2>
+    <div class="card">
+      <div class="card-title">💻 ข้อมูล Server</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>df -h</code></td><td>ดูพื้นที่ disk</td></tr>
+          <tr><td><code>free -h</code></td><td>ดู RAM</td></tr>
+          <tr><td><code>top</code></td><td>ดู process ที่กิน CPU/RAM (q ออก)</td></tr>
+          <tr><td><code>systemctl reboot</code></td><td>reboot server <span class="badge badge-red">อันตราย</span></td></tr>
+          <tr><td><code>pm2 startup</code></td><td>ตั้งให้ PM2 auto-start หลัง reboot</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔄 หลัง Reboot Server</div>
+      <div class="card-body">
+        <table>
+          <tr><th>Service</th><th>Check</th><th>Start ถ้าไม่รัน</th></tr>
+          <tr><td>App</td><td><code>pm2 status</code></td><td><code>pm2 start contractflow</code></td></tr>
+          <tr><td>MinIO</td><td><code>systemctl status minio</code></td><td><code>systemctl start minio</code></td></tr>
+          <tr><td>PostgreSQL</td><td><code>systemctl status postgresql</code></td><td><code>systemctl start postgresql</code></td></tr>
+          <tr><td>Nginx</td><td><code>systemctl status nginx</code></td><td><code>systemctl start nginx</code></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📅 Todo ที่เหลือ</div>
+      <div class="card-body">
+        <table>
+          <tr><th>งาน</th><th>สถานะ</th><th>หมายเหตุ</th></tr>
+          <tr><td>Domain innopowerlegal.cloud</td><td><span class="badge badge-green">✅ เสร็จแล้ว</span></td><td>ชี้มาที่ 187.77.130.205</td></tr>
+          <tr><td>SSL Certificate (Certbot)</td><td><span class="badge badge-green">✅ เสร็จแล้ว</span></td><td>หมดอายุ 2026-09-07 (auto-renew)</td></tr>
+          <tr><td>Nginx HTTPS config</td><td><span class="badge badge-green">✅ เสร็จแล้ว</span></td><td>port 80 → redirect HTTPS, port 443 → port 3001</td></tr>
+          <tr><td>NEXTAUTH_URL</td><td><span class="badge badge-green">✅ เสร็จแล้ว</span></td><td>https://innopowerlegal.cloud</td></tr>
+          <tr><td>SMTP Email (Option B)</td><td><span class="badge badge-yellow">รอดำเนินการ</span></td><td>รอ IT whitelist IP 187.77.130.205 ใน Exchange</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔒 SSL Certificate</div>
+      <div class="card-body">
+        <table>
+          <tr><th style="width:40%">คำสั่ง</th><th>ทำอะไร</th></tr>
+          <tr><td><code>certbot renew --dry-run</code></td><td>ทดสอบ auto-renew (ไม่ต่ออายุจริง)</td></tr>
+          <tr><td><code>certbot certificates</code></td><td>ดูสถานะ certificate</td></tr>
+          <tr><td><code>openssl s_client -connect innopowerlegal.cloud:443 -brief</code></td><td>ตรวจสอบ SSL ว่าทำงานได้ไหม</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>ContractFlow VPS Reference — INNOPOWER Digital | srv1450455 (187.77.130.205)</footer>
+
+<div class="copied" id="copied">คัดลอกแล้ว ✓</div>
+
+<script>
+  document.querySelectorAll('code').forEach(el => {
+    el.addEventListener('click', () => {
+      navigator.clipboard.writeText(el.textContent).then(() => {
+        const toast = document.getElementById('copied');
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 1500);
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

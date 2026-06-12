@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const ALL_STATUSES: ContractStatus[] = [
   "REGISTERED",
   "AWAITING_TEMPLATE",
-  "DRAFTING",
+  "PENDING_BU_REVISION",
   "IN_LEGAL_REVIEW",
   "WITH_COUNTERPARTY",
   "CP_RESPONDED",

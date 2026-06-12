@@ -16,12 +16,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  assignTemplate,
   cancelContract,
   markAwaitingSignature,
   pickupReview,
+  resubmitForReview,
   reviseDraft,
-  submitForReview,
+  startReview,
   submitForSigning,
   type ActionResult,
 } from "@/server/actions/contracts";
@@ -72,11 +72,11 @@ export function ContractActionPanel({ contractId, actions, children }: Props) {
       let result: ActionResult;
       const input = { contractId, formData };
       switch (a.action) {
-        case "assignTemplate":
-          result = await assignTemplate(input);
+        case "startReview":
+          result = await startReview(input);
           break;
-        case "submitForReview":
-          result = await submitForReview(input);
+        case "resubmitForReview":
+          result = await resubmitForReview(input);
           break;
         case "pickupReview":
           result = await pickupReview({ contractId });

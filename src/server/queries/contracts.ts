@@ -201,3 +201,21 @@ export async function listBUTeams(): Promise<BUTeamOption[]> {
     memberCount: g._count._all,
   }));
 }
+
+export type BUUserOption = { id: string; name: string; role: string };
+
+// Returns active BU users grouped by department — used by the new contract
+// form so Legal can pick a specific owner instead of relying on auto-select.
+export async function listBUUsersByTeam(): Promise<Record<string, BUUserOption[]>> {
+  const users = await prisma.user.findMany({
+    where: { active: true, role: { in: ["BU_MEMBER", "BU_MANAGER"] } },
+    select: { id: true, name: true, role: true, department: true },
+    orderBy: [{ role: "desc" }, { name: "asc" }],
+  });
+  const result: Record<string, BUUserOption[]> = {};
+  for (const u of users) {
+    if (!result[u.department]) result[u.department] = [];
+    result[u.department].push({ id: u.id, name: u.name, role: u.role });
+  }
+  return result;
+}

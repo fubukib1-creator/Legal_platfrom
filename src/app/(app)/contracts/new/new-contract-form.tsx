@@ -17,10 +17,11 @@ import {
 } from "@/components/ui/select";
 import { registerContract } from "@/server/actions/contracts";
 import { CONTRACT_TYPES } from "@/lib/contract-types";
-import type { BUTeamOption } from "@/server/queries/contracts";
+import type { BUTeamOption, BUUserOption } from "@/server/queries/contracts";
 
 type Props = {
   teams: BUTeamOption[];
+  buUsersByTeam: Record<string, BUUserOption[]>;
 };
 
 function todayIsoDate(): string {
@@ -39,13 +40,21 @@ const COMPLEXITY_OPTIONS: ReadonlyArray<{ id: Complexity; label: string }> = [
   { id: "HIGH", label: "High" },
 ];
 
-export function NewContractForm({ teams }: Props) {
+export function NewContractForm({ teams, buUsersByTeam }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [type, setType] = useState<string>(CONTRACT_TYPES[0].id);
   const [complexity, setComplexity] = useState<Complexity | "">("");
   const [team, setTeam] = useState<string>(teams[0]?.department ?? "");
   const [startDate, setStartDate] = useState<string>(todayIsoDate());
+  const [buOwnerId, setBuOwnerId] = useState<string>(
+    buUsersByTeam[teams[0]?.department ?? ""]?.[0]?.id ?? "",
+  );
+
+  function handleTeamChange(v: string) {
+    setTeam(v);
+    setBuOwnerId(buUsersByTeam[v]?.[0]?.id ?? "");
+  }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -67,6 +76,7 @@ export function NewContractForm({ teams }: Props) {
         estimatedValue: Number.isFinite(estimatedValue) ? estimatedValue : undefined,
         currency: ((fd.get("currency") as string) || "THB").toUpperCase(),
         buDepartment: team,
+        buOwnerId: buOwnerId || null,
         startDate: startDate || null,
         notes: ((fd.get("notes") as string) || null) ?? null,
       });
@@ -148,11 +158,11 @@ export function NewContractForm({ teams }: Props) {
             </Select>
           </div>
 
-          {/* Team + start date — equal halves so the date picker isn't full-width */}
+          {/* Team + BU owner */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="buTeam">BU team</Label>
-              <Select value={team} onValueChange={(v) => v && setTeam(v)}>
+              <Select value={team} onValueChange={(v) => v && handleTeamChange(v)}>
                 <SelectTrigger id="buTeam">
                   <SelectValue placeholder="Select team" />
                 </SelectTrigger>
@@ -169,16 +179,36 @@ export function NewContractForm({ teams }: Props) {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="startDate">Start date</Label>
-              <Input
-                id="startDate"
-                name="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.currentTarget.value)}
-                required
-              />
+              <Label htmlFor="buOwner">BU owner</Label>
+              <Select value={buOwnerId} onValueChange={(v) => v && setBuOwnerId(v)}>
+                <SelectTrigger id="buOwner">
+                  <SelectValue placeholder="Select owner" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(buUsersByTeam[team] ?? []).map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}
+                      {u.role === "BU_MANAGER" && (
+                        <span className="ml-2 text-xs text-muted-foreground">Manager</span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+          </div>
+
+          {/* Start date */}
+          <div className="grid gap-2">
+            <Label htmlFor="startDate">Start date</Label>
+            <Input
+              id="startDate"
+              name="startDate"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.currentTarget.value)}
+              required
+            />
           </div>
 
           {/* Estimated value + currency — value gets more space than currency */}
