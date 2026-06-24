@@ -135,7 +135,7 @@ function labelFor(s: SLAStatus): string {
     case "ON_TRACK":
       return "on track";
     case "WARNING":
-      return "1 BD remaining";
+      return "≤2 BD remaining";
     case "BREACHED":
       return "breached";
     case "COMPLETED":

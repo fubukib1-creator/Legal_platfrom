@@ -11,6 +11,13 @@ function bkkKey(d: Date): string {
   return formatInTimeZone(d, APP_TZ, "yyyy-MM-dd");
 }
 
+// A review is "deadline approaching" (WARNING) once it has this many business
+// days left or fewer. This is the SINGLE definition shared by the SLA column,
+// the badge, the legal-performance "Deadline approaching" tile and its
+// drill-down list, the contract-detail "Crunch time" banner, and the alert
+// emails — so the tile count always equals the list it links to.
+export const WARNING_BD_THRESHOLD = 2;
+
 // Recomputes the live SLA status from the deadline + now. Mirrors the cron's
 // rules in plan §10.1 — deliberately ignores the stored slaStatus so the cron
 // has a single source of truth.
@@ -33,7 +40,7 @@ export function computeSLAStatus(
   // the contract is not yet breached — treat as the last working day.
   if (bkkKey(now) === bkkKey(review.slaDeadline)) return "WARNING";
   if (remaining <= 0) return "BREACHED";
-  if (remaining === 1) return "WARNING";
+  if (remaining <= WARNING_BD_THRESHOLD) return "WARNING";
   return "ON_TRACK";
 }
 
@@ -70,7 +77,8 @@ export function describeSLABadge(
     return { kind: "warning", daysRemaining: 1 };
   }
   const remaining = businessDaysBetween(now, review.slaDeadline, holidays);
-  if (remaining <= 1) return { kind: "warning", daysRemaining: Math.max(0, remaining) };
+  if (remaining <= WARNING_BD_THRESHOLD)
+    return { kind: "warning", daysRemaining: Math.max(0, remaining) };
   return { kind: "on-track", daysRemaining: remaining };
 }
 

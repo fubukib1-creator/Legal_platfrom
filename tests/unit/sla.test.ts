@@ -40,6 +40,18 @@ describe("computeSLAStatus", () => {
     expect(computeSLAStatus(review, now, NO_HOLIDAYS)).toBe("ON_TRACK");
   });
 
+  it("ON_TRACK three business days before deadline", () => {
+    const review = makeReview({ submittedAt, slaDeadline: deadline });
+    const now = bkk("2026-04-10"); // Fri → Mon 13, Tue 14, Wed 15 = 3 BD
+    expect(computeSLAStatus(review, now, NO_HOLIDAYS)).toBe("ON_TRACK");
+  });
+
+  it("WARNING two business days before deadline", () => {
+    const review = makeReview({ submittedAt, slaDeadline: deadline });
+    const now = bkk("2026-04-13"); // Mon → Tue 14, Wed 15 = 2 BD (threshold)
+    expect(computeSLAStatus(review, now, NO_HOLIDAYS)).toBe("WARNING");
+  });
+
   it("WARNING the day before deadline", () => {
     const review = makeReview({ submittedAt, slaDeadline: deadline });
     const now = bkk("2026-04-14"); // Tue, deadline is Wed Apr 15
@@ -95,6 +107,16 @@ describe("describeSLABadge", () => {
     });
     const badge = describeSLABadge(review, bkk("2026-04-08"), NO_HOLIDAYS);
     expect(badge).toEqual({ kind: "on-track", daysRemaining: 5 });
+  });
+
+  it("warning two business days before deadline shows 2d remaining", () => {
+    const review = makeReview({
+      submittedAt,
+      pickedUpAt: bkk("2026-04-06", "11:00:00"),
+      slaDeadline: deadline,
+    });
+    const badge = describeSLABadge(review, bkk("2026-04-13"), NO_HOLIDAYS);
+    expect(badge).toEqual({ kind: "warning", daysRemaining: 2 });
   });
 
   it("warning the day before deadline", () => {

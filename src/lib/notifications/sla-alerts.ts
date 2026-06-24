@@ -1,6 +1,7 @@
 import "server-only";
 import type { Review, SLAStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { businessDaysBetween, getHolidays } from "@/lib/business-days";
 import { sendEmail } from "@/lib/notifications/email";
 import { sendLineMessage } from "@/lib/notifications/line";
 
@@ -71,16 +72,25 @@ export async function dispatchSLAAlert(
   }
   if (recipients.size === 0) return { emailSent: 0, lineSent: 0 };
 
+  // Business days left on the warning email — computed live so the wording
+  // matches the WARNING_BD_THRESHOLD definition instead of a hard-coded "1".
+  const holidays = await getHolidays();
+  const remainingBD = Math.max(
+    0,
+    businessDaysBetween(new Date(), review.slaDeadline, holidays),
+  );
+  const dayWord = remainingBD === 1 ? "business day" : "business days";
+
   const subject =
     transition === "breached"
       ? `[Past deadline] ${contract.contractNumber} — ${contract.title}`
-      : `[Due soon] ${contract.contractNumber} — 1 business day left`;
+      : `[Due soon] ${contract.contractNumber} — ${remainingBD} ${dayWord} left`;
 
   const deadline = TZ.format(review.slaDeadline);
   const text = [
     transition === "breached"
       ? `Review deadline has passed for round ${review.round} of ${contract.contractNumber}.`
-      : `Round ${review.round} of ${contract.contractNumber} has 1 business day left before it goes past deadline.`,
+      : `Round ${review.round} of ${contract.contractNumber} has ${remainingBD} ${dayWord} left before it goes past deadline.`,
     `Contract: ${contract.title} (${contract.counterparty})`,
     `Department: ${contract.buDepartment}`,
     `Deadline: ${deadline} (Bangkok)`,
