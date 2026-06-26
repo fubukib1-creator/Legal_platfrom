@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { ContractStatus, ContractType } from "@prisma/client";
+import type {
+  ContractComplexity,
+  ContractStatus,
+  ContractType,
+} from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import {
@@ -12,6 +16,12 @@ import {
   type ContractSortKey,
   type ContractSLAFilter,
 } from "@/server/queries/contracts";
+import {
+  isContractComplexity,
+  isContractExtensionFilter,
+  type ContractExtensionFilter,
+} from "@/lib/contract-filters";
+import { resolvePeriod } from "@/lib/period";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
@@ -54,9 +64,24 @@ type SearchParams = {
   department?: string | string[];
   type?: string | string[];
   sla?: string | string[];
+  complexity?: string | string[];
+  extension?: string;
+  period?: string;
+  value?: string;
   page?: string;
   sort?: string;
   dir?: string;
+};
+
+const COMPLEXITY_LABEL: Record<ContractComplexity, string> = {
+  LOW: "Low",
+  MEDIUM: "Medium",
+  HIGH: "High",
+};
+
+const EXTENSION_LABEL: Record<ContractExtensionFilter, string> = {
+  extended: "SLA extended",
+  not_extended: "Not extended",
 };
 
 function asArray(v: string | string[] | undefined): string[] {
@@ -87,6 +112,19 @@ export default async function ContractsPage({
   const slaFilter = asArray(sp.sla).filter((s): s is ContractSLAFilter =>
     ALL_SLA.includes(s as ContractSLAFilter),
   );
+  const complexityFilter = asArray(sp.complexity).filter(isContractComplexity);
+  const extensionFilter =
+    sp.extension && isContractExtensionFilter(sp.extension)
+      ? sp.extension
+      : undefined;
+
+  // Period scoping is opt-in: only the Legal performance drill-downs pass a
+  // `period` param, and the list then restricts to that window's start dates so
+  // its totals line up with the card. A bare /contracts visit has no period and
+  // shows every contract in scope.
+  const period = sp.period
+    ? resolvePeriod({ period: sp.period, value: sp.value })
+    : null;
 
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
 
@@ -106,11 +144,29 @@ export default async function ContractsPage({
       departments: departmentFilter.length ? departmentFilter : undefined,
       types: typeFilter.length ? typeFilter : undefined,
       sla: slaFilter.length ? slaFilter : undefined,
+      complexity: complexityFilter.length ? complexityFilter : undefined,
+      extension: extensionFilter,
+      startFrom: period?.start,
+      startTo: period?.end,
       page,
       sort,
       dir,
     },
   );
+
+  // Single source of truth for the filter params that must survive sorting,
+  // pagination, and CSV export.
+  const filterExtras: FilterExtras = {
+    search,
+    statuses: statusFilter,
+    departments: departmentFilter,
+    types: typeFilter,
+    sla: slaFilter,
+    complexity: complexityFilter,
+    extension: extensionFilter,
+    period: period?.kind,
+    value: period?.value,
+  };
 
   const canCreate = hasPermission(session.user.role, "contract:create");
   const canExport = hasPermission(session.user.role, "contract:export-csv");
@@ -118,11 +174,7 @@ export default async function ContractsPage({
     session.user.role === "BU_MANAGER" || session.user.role === "BU_MEMBER";
   const titleSuffix = isBU ? ` - ${session.user.department}` : "";
   const exportParams = new URLSearchParams();
-  if (search) exportParams.set("search", search);
-  for (const s of statusFilter) exportParams.append("status", s);
-  for (const d of departmentFilter) exportParams.append("department", d);
-  for (const t of typeFilter) exportParams.append("type", t);
-  for (const s of slaFilter) exportParams.append("sla", s);
+  appendFilters(exportParams, filterExtras);
   const exportHref = `/api/export/contracts.csv${exportParams.toString() ? `?${exportParams.toString()}` : ""}`;
 
   return (
@@ -166,19 +218,44 @@ export default async function ContractsPage({
         role={session.user.role}
       />
 
+      {period || complexityFilter.length > 0 || extensionFilter ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-slate-500">Drill-down from Legal performance:</span>
+          {period ? (
+            <DrillChip
+              label={`Period · ${period.label}`}
+              href={hrefWithout(filterExtras, { period: true })}
+            />
+          ) : null}
+          {complexityFilter.map((c) => (
+            <DrillChip
+              key={c}
+              label={`Complexity · ${COMPLEXITY_LABEL[c]}`}
+              href={hrefWithout(filterExtras, { complexity: c })}
+            />
+          ))}
+          {extensionFilter ? (
+            <DrillChip
+              label={EXTENSION_LABEL[extensionFilter]}
+              href={hrefWithout(filterExtras, { extension: true })}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <SortHeader label="#" sortKey="contractNumber" currentSort={sort} currentDir={dir} extra={{ search, statuses: statusFilter, departments: departmentFilter, types: typeFilter, sla: slaFilter }} />
-              <SortHeader label="Title" sortKey="title" currentSort={sort} currentDir={dir} extra={{ search, statuses: statusFilter, departments: departmentFilter, types: typeFilter, sla: slaFilter }} />
-              <SortHeader label="Counterparty" sortKey="counterparty" currentSort={sort} currentDir={dir} extra={{ search, statuses: statusFilter, departments: departmentFilter, types: typeFilter, sla: slaFilter }} />
+              <SortHeader label="#" sortKey="contractNumber" currentSort={sort} currentDir={dir} extra={filterExtras} />
+              <SortHeader label="Title" sortKey="title" currentSort={sort} currentDir={dir} extra={filterExtras} />
+              <SortHeader label="Counterparty" sortKey="counterparty" currentSort={sort} currentDir={dir} extra={filterExtras} />
               {!isBU ? (
-                <SortHeader label="Department" sortKey="buDepartment" currentSort={sort} currentDir={dir} extra={{ search, statuses: statusFilter, departments: departmentFilter, types: typeFilter, sla: slaFilter }} />
+                <SortHeader label="Department" sortKey="buDepartment" currentSort={sort} currentDir={dir} extra={filterExtras} />
               ) : null}
-              <SortHeader label="Status" sortKey="status" currentSort={sort} currentDir={dir} extra={{ search, statuses: statusFilter, departments: departmentFilter, types: typeFilter, sla: slaFilter }} />
-              <SortHeader label="Round" sortKey="currentRound" currentSort={sort} currentDir={dir} extra={{ search, statuses: statusFilter, departments: departmentFilter, types: typeFilter, sla: slaFilter }} />
-              <SortHeader label="Updated" sortKey="updatedAt" currentSort={sort} currentDir={dir} extra={{ search, statuses: statusFilter, departments: departmentFilter, types: typeFilter, sla: slaFilter }} />
+              <SortHeader label="Status" sortKey="status" currentSort={sort} currentDir={dir} extra={filterExtras} />
+              <SortHeader label="Round" sortKey="currentRound" currentSort={sort} currentDir={dir} extra={filterExtras} />
+              <SortHeader label="Updated" sortKey="updatedAt" currentSort={sort} currentDir={dir} extra={filterExtras} />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -223,7 +300,7 @@ export default async function ContractsPage({
             page={result.page - 1}
             disabled={result.page <= 1}
             label="Previous"
-            extra={{ search, statuses: statusFilter, departments: departmentFilter, types: typeFilter, sla: slaFilter }}
+            extra={filterExtras}
             sort={sort}
             dir={dir}
           />
@@ -231,7 +308,7 @@ export default async function ContractsPage({
             page={result.page + 1}
             disabled={result.page >= result.pageCount}
             label="Next"
-            extra={{ search, statuses: statusFilter, departments: departmentFilter, types: typeFilter, sla: slaFilter }}
+            extra={filterExtras}
             sort={sort}
             dir={dir}
           />
@@ -247,6 +324,10 @@ type FilterExtras = {
   departments: string[];
   types: ContractType[];
   sla: ContractSLAFilter[];
+  complexity: ContractComplexity[];
+  extension?: ContractExtensionFilter;
+  period?: string;
+  value?: string;
 };
 
 function appendFilters(params: URLSearchParams, e: FilterExtras) {
@@ -255,6 +336,44 @@ function appendFilters(params: URLSearchParams, e: FilterExtras) {
   for (const d of e.departments) params.append("department", d);
   for (const t of e.types) params.append("type", t);
   for (const s of e.sla) params.append("sla", s);
+  for (const c of e.complexity) params.append("complexity", c);
+  if (e.extension) params.set("extension", e.extension);
+  if (e.period) params.set("period", e.period);
+  if (e.value) params.set("value", e.value);
+}
+
+// Builds a /contracts URL identical to the current one but with a single
+// drill-down dimension removed — backs the "×" on each drill-down chip.
+function hrefWithout(
+  extras: FilterExtras,
+  drop: { period?: boolean; extension?: boolean; complexity?: ContractComplexity },
+): string {
+  const next: FilterExtras = {
+    ...extras,
+    complexity: drop.complexity
+      ? extras.complexity.filter((c) => c !== drop.complexity)
+      : extras.complexity,
+    extension: drop.extension ? undefined : extras.extension,
+    period: drop.period ? undefined : extras.period,
+    value: drop.period ? undefined : extras.value,
+  };
+  const params = new URLSearchParams();
+  appendFilters(params, next);
+  return `/contracts${params.toString() ? `?${params.toString()}` : ""}`;
+}
+
+function DrillChip({ label, href }: { label: string; href: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-primary/10"
+    >
+      {label}
+      <span aria-hidden="true" className="text-muted-foreground">
+        ×
+      </span>
+    </Link>
+  );
 }
 
 function PaginationLink({

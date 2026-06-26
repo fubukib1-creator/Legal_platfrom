@@ -1,11 +1,17 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
-import type { Contract, ContractStatus, ContractType } from "@prisma/client";
+import type {
+  Contract,
+  ContractComplexity,
+  ContractStatus,
+  ContractType,
+} from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { contractScopeWhere, type SessionUser } from "@/lib/permissions";
 
 import { DEFAULT_SORT_DIR, DEFAULT_SORT_KEY } from "@/lib/contract-sort";
 import type { ContractSortKey } from "@/lib/contract-sort";
+import type { ContractExtensionFilter } from "@/lib/contract-filters";
 
 // Re-export the sort allow-list so callers that already import from this
 // module can keep doing so. The lib module stays Prisma-free for unit tests.
@@ -29,6 +35,13 @@ export type ContractListFilters = {
   departments?: string[];
   types?: ContractType[];
   sla?: ContractSLAFilter[];
+  complexity?: ContractComplexity[];
+  extension?: ContractExtensionFilter;
+  // Period scoping by contract start date: [startFrom, startTo). Used by the
+  // Legal performance drill-downs so the list matches the card's cohort, which
+  // is "startDate falls in the selected period".
+  startFrom?: Date;
+  startTo?: Date;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -70,6 +83,25 @@ export async function listContracts(
   if (filters.sla?.includes("breached")) slaStatuses.push("BREACHED");
   if (filters.sla?.includes("warning")) slaStatuses.push("WARNING");
 
+  // SLA and extension are both `reviews` relation predicates, so they live in an
+  // AND array rather than a single `reviews` key — otherwise the second would
+  // overwrite the first when both filters are present.
+  const reviewPredicates: Prisma.ContractWhereInput[] = [];
+  if (slaStatuses.length) {
+    reviewPredicates.push({
+      reviews: { some: { returnedAt: null, slaStatus: { in: slaStatuses } } },
+    });
+  }
+  if (filters.extension === "extended") {
+    reviewPredicates.push({ reviews: { some: { slaExtensionDays: { gt: 0 } } } });
+  } else if (filters.extension === "not_extended") {
+    // No review extended the SLA — includes contracts with zero reviews, which
+    // matches the Legal performance "Not extended" segment.
+    reviewPredicates.push({
+      NOT: { reviews: { some: { slaExtensionDays: { gt: 0 } } } },
+    });
+  }
+
   const where: Prisma.ContractWhereInput = {
     ...contractScopeWhere(user),
     ...(filters.status?.length ? { status: { in: filters.status } } : {}),
@@ -77,16 +109,18 @@ export async function listContracts(
       ? { buDepartment: { in: filters.departments } }
       : {}),
     ...(filters.types?.length ? { type: { in: filters.types } } : {}),
-    ...(slaStatuses.length
+    ...(filters.complexity?.length
+      ? { complexity: { in: filters.complexity } }
+      : {}),
+    ...(filters.startFrom || filters.startTo
       ? {
-          reviews: {
-            some: {
-              returnedAt: null,
-              slaStatus: { in: slaStatuses },
-            },
+          startDate: {
+            ...(filters.startFrom ? { gte: filters.startFrom } : {}),
+            ...(filters.startTo ? { lt: filters.startTo } : {}),
           },
         }
       : {}),
+    ...(reviewPredicates.length ? { AND: reviewPredicates } : {}),
     ...(filters.search
       ? {
           OR: [

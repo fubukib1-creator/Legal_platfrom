@@ -14,7 +14,12 @@ import {
 } from "@/components/ui/table";
 import { KPITile } from "@/components/dashboard/kpi-tile";
 import { PeriodPicker } from "@/components/shared/period-picker";
-import { recentMonthKeys, recentYearKeys, resolvePeriod } from "@/lib/period";
+import {
+  recentMonthKeys,
+  recentYearKeys,
+  resolvePeriod,
+  type Period,
+} from "@/lib/period";
 import { cn } from "@/lib/utils";
 
 type SearchParams = { period?: string; value?: string };
@@ -276,12 +281,13 @@ export default async function LegalKPIPage({
       </section>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ComplexityCard proportions={data.complexityProportions} />
+        <ComplexityCard proportions={data.complexityProportions} period={period} />
         <ExtensionCard
           extended={data.extensionProportion.extended}
           notExtended={data.extensionProportion.notExtended}
           total={data.extensionProportion.total}
           ratio={data.extensionProportion.ratio}
+          period={period}
         />
       </section>
 
@@ -368,14 +374,28 @@ const COMPLEXITY_COLOR: Record<ContractComplexity, string> = {
   HIGH: "bg-red-500",
 };
 
+// Builds a /contracts link scoped to the same period as the dashboard, so the
+// drilled-in list totals match the card.
+function contractsHref(
+  params: Record<string, string>,
+  period: Period,
+): string {
+  const sp = new URLSearchParams(params);
+  sp.set("period", period.kind);
+  sp.set("value", period.value);
+  return `/contracts?${sp.toString()}`;
+}
+
 function ComplexityCard({
   proportions,
+  period,
 }: {
   proportions: ReadonlyArray<{
     complexity: ContractComplexity;
     count: number;
     ratio: number;
   }>;
+  period: Period;
 }) {
   const total = proportions.reduce((s, p) => s + p.count, 0);
   return (
@@ -404,16 +424,22 @@ function ComplexityCard({
             </div>
             <ul className="mt-3 grid grid-cols-3 gap-2 text-sm">
               {proportions.map((p) => (
-                <li key={p.complexity} className="flex items-center gap-2">
-                  <span
-                    className={`inline-block h-3 w-3 rounded-sm ${COMPLEXITY_COLOR[p.complexity]}`}
-                  />
-                  <span className="text-slate-700">
-                    {COMPLEXITY_LABEL[p.complexity]}
-                  </span>
-                  <span className="ml-auto tabular-nums text-slate-500">
-                    {p.count} · {Math.round(p.ratio * 100)}%
-                  </span>
+                <li key={p.complexity}>
+                  <Link
+                    href={contractsHref({ complexity: p.complexity }, period)}
+                    className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-muted"
+                    title={`View ${COMPLEXITY_LABEL[p.complexity]} contracts in ${period.label}`}
+                  >
+                    <span
+                      className={`inline-block h-3 w-3 rounded-sm ${COMPLEXITY_COLOR[p.complexity]}`}
+                    />
+                    <span className="text-slate-700">
+                      {COMPLEXITY_LABEL[p.complexity]}
+                    </span>
+                    <span className="ml-auto tabular-nums text-slate-500">
+                      {p.count} · {Math.round(p.ratio * 100)}%
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -429,11 +455,13 @@ function ExtensionCard({
   notExtended,
   total,
   ratio,
+  period,
 }: {
   extended: number;
   notExtended: number;
   total: number;
   ratio: number;
+  period: Period;
 }) {
   return (
     <Card>
@@ -460,19 +488,31 @@ function ExtensionCard({
               )}
             </div>
             <ul className="mt-3 grid grid-cols-2 gap-2 text-sm">
-              <li className="flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded-sm bg-orange-500" />
-                <span className="text-slate-700">Extended</span>
-                <span className="ml-auto tabular-nums text-slate-500">
-                  {extended} · {Math.round(ratio * 100)}%
-                </span>
+              <li>
+                <Link
+                  href={contractsHref({ extension: "extended" }, period)}
+                  className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-muted"
+                  title={`View SLA-extended contracts in ${period.label}`}
+                >
+                  <span className="inline-block h-3 w-3 rounded-sm bg-orange-500" />
+                  <span className="text-slate-700">Extended</span>
+                  <span className="ml-auto tabular-nums text-slate-500">
+                    {extended} · {Math.round(ratio * 100)}%
+                  </span>
+                </Link>
               </li>
-              <li className="flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded-sm bg-sky-500" />
-                <span className="text-slate-700">Not extended</span>
-                <span className="ml-auto tabular-nums text-slate-500">
-                  {notExtended} · {Math.round((1 - ratio) * 100)}%
-                </span>
+              <li>
+                <Link
+                  href={contractsHref({ extension: "not_extended" }, period)}
+                  className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-muted"
+                  title={`View not-extended contracts in ${period.label}`}
+                >
+                  <span className="inline-block h-3 w-3 rounded-sm bg-sky-500" />
+                  <span className="text-slate-700">Not extended</span>
+                  <span className="ml-auto tabular-nums text-slate-500">
+                    {notExtended} · {Math.round((1 - ratio) * 100)}%
+                  </span>
+                </Link>
               </li>
             </ul>
           </>
